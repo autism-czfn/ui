@@ -1,0 +1,529 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Autism Q&A Search</title>
+
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+
+  <!-- marked.js — Markdown → HTML -->
+  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+
+  <!-- DOMPurify — sanitize LLM output before innerHTML -->
+  <script src="https://cdn.jsdelivr.net/npm/dompurify@3.1.6/dist/purify.min.js"></script>
+
+  <style>
+    /* Citation superscripts */
+    .citation {
+      cursor: pointer;
+      color: #2563eb;
+      font-weight: 600;
+      font-size: 0.75em;
+      vertical-align: super;
+      text-decoration: none;
+    }
+    .citation:hover { color: #1d4ed8; }
+
+    /* Score bar */
+    .score-bar-bg { background: #e5e7eb; border-radius: 9999px; height: 4px; }
+    .score-bar-fill { background: #6366f1; border-radius: 9999px; height: 4px; }
+
+    /* Smooth scroll */
+    html { scroll-behavior: smooth; }
+
+    /* Spinner animation */
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .spin { animation: spin 0.8s linear infinite; }
+
+    /* Answer prose */
+    #answer-text h1, #answer-text h2, #answer-text h3 {
+      font-weight: 700; margin-top: 1em; margin-bottom: 0.4em;
+    }
+    #answer-text ul, #answer-text ol {
+      padding-left: 1.5em; margin: 0.5em 0;
+    }
+    #answer-text ul { list-style-type: disc; }
+    #answer-text ol { list-style-type: decimal; }
+    #answer-text p { margin-bottom: 0.6em; }
+    #answer-text strong { font-weight: 700; }
+    #answer-text em { font-style: italic; }
+  </style>
+</head>
+<body class="bg-gray-50 min-h-screen text-gray-900">
+
+  <!-- ── HEADER ──────────────────────────────────────────────────────────── -->
+  <header class="bg-white border-b border-gray-200 sticky top-0 z-10">
+    <div class="max-w-3xl mx-auto px-4 py-3 flex items-center justify-between">
+      <div class="flex items-center gap-2">
+        <span class="text-2xl">🧩</span>
+        <span class="font-bold text-lg tracking-tight">Autism Q&amp;A</span>
+      </div>
+      <div class="flex items-center gap-3">
+        <!-- health dot -->
+        <span id="health-dot" class="h-2 w-2 rounded-full bg-gray-300" title="Search service status"></span>
+        <!-- stats badge -->
+        <span id="stats-badge"
+              class="text-xs bg-indigo-50 text-indigo-700 border border-indigo-200 rounded-full px-3 py-1 font-medium">
+          loading…
+        </span>
+      </div>
+    </div>
+  </header>
+
+  <!-- ── MAIN ────────────────────────────────────────────────────────────── -->
+  <main class="max-w-3xl mx-auto px-4 py-8">
+
+    <!-- Search form -->
+    <div class="bg-white rounded-2xl border border-gray-200 shadow-sm p-5 mb-6">
+      <label class="block text-sm font-semibold text-gray-700 mb-2">
+        Ask anything about autism
+      </label>
+
+      <div class="flex gap-2">
+        <textarea
+          id="question"
+          name="question"
+          rows="2"
+          placeholder="What are early signs of autism in toddlers?"
+          class="flex-1 resize-none rounded-xl border border-gray-300 px-4 py-2.5 text-sm
+                 focus:outline-none focus:ring-2 focus:ring-indigo-400 focus:border-transparent
+                 placeholder-gray-400 transition"
+        ></textarea>
+        <button
+          id="ask-btn"
+          onclick="doSearch()"
+          class="self-end flex items-center gap-1.5 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50
+                 text-white text-sm font-semibold rounded-xl px-5 py-2.5 transition whitespace-nowrap"
+        >
+          <svg id="btn-icon" class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2"
+               viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round"
+                  d="M21 21l-4.35-4.35M17 11A6 6 0 1 1 5 11a6 6 0 0 1 12 0z"/>
+          </svg>
+          <span id="btn-label">Search</span>
+        </button>
+      </div>
+
+      <!-- Filters (collapsed by default) -->
+      <details id="filter-panel" class="mt-3">
+        <summary class="cursor-pointer text-xs font-medium text-gray-500 hover:text-gray-700
+                        select-none list-none flex items-center gap-1 w-fit">
+          <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2"
+               viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round"
+                  d="M3 4h18M7 8h10M10 12h4"/>
+          </svg>
+          Filters
+        </summary>
+        <div class="mt-3 flex flex-wrap gap-3">
+          <div>
+            <label class="block text-xs text-gray-500 mb-1">Source</label>
+            <select id="filter-source"
+                    class="text-sm border border-gray-300 rounded-lg px-3 py-1.5
+                           focus:outline-none focus:ring-2 focus:ring-indigo-400 bg-white">
+              <option value="">All sources</option>
+              <option value="reddit">Reddit</option>
+              <option value="pubmed">PubMed</option>
+              <option value="europepmc">Europe PMC</option>
+              <option value="semanticscholar">Semantic Scholar</option>
+              <option value="crossref">CrossRef</option>
+              <option value="biorxiv">bioRxiv</option>
+              <option value="doaj">DOAJ</option>
+              <option value="openalex">OpenAlex</option>
+              <option value="clinicaltrials">ClinicalTrials.gov</option>
+              <option value="core">CORE</option>
+              <option value="rss">Spectrum News / RSS</option>
+              <option value="hackernews">Hacker News</option>
+              <option value="youtube">YouTube</option>
+              <option value="newsapi">NewsAPI</option>
+              <option value="wikipedia">Wikipedia</option>
+              <option value="html_crawl">Web crawl</option>
+            </select>
+          </div>
+          <div>
+            <label class="block text-xs text-gray-500 mb-1">Time</label>
+            <select id="filter-days"
+                    class="text-sm border border-gray-300 rounded-lg px-3 py-1.5
+                           focus:outline-none focus:ring-2 focus:ring-indigo-400 bg-white">
+              <option value="">Any time</option>
+              <option value="30">Last 30 days</option>
+              <option value="90">Last 90 days</option>
+              <option value="365">Last year</option>
+            </select>
+          </div>
+          <div>
+            <label class="block text-xs text-gray-500 mb-1">Results</label>
+            <select id="filter-limit"
+                    class="text-sm border border-gray-300 rounded-lg px-3 py-1.5
+                           focus:outline-none focus:ring-2 focus:ring-indigo-400 bg-white">
+              <option value="10">Top 10</option>
+              <option value="20">Top 20</option>
+              <option value="50">Top 50</option>
+            </select>
+          </div>
+        </div>
+      </details>
+    </div>
+
+    <!-- ── RESULTS AREA ───────────────────────────────────────────────────── -->
+    <div id="result">
+      <!-- Empty state -->
+      <div class="text-center text-gray-400 py-16 select-none">
+        <div class="text-5xl mb-3">🔍</div>
+        <p class="text-base font-medium">Ask a question above to get started</p>
+        <p class="text-sm mt-1">Searches across research papers, Reddit, news, and more</p>
+      </div>
+    </div>
+
+  </main>
+
+  <!-- ── SCRIPTS ─────────────────────────────────────────────────────────── -->
+  <script>
+    // ── Search API base URL ────────────────────────────────────────────────
+    const API_BASE = 'http://192.168.1.9:3001';
+
+    // ── Source badge colours ───────────────────────────────────────────────
+    const SOURCE_COLORS = {
+      reddit:          'bg-orange-100 text-orange-800',
+      pubmed:          'bg-blue-100 text-blue-800',
+      europepmc:       'bg-blue-100 text-blue-800',
+      semanticscholar: 'bg-purple-100 text-purple-800',
+      crossref:        'bg-purple-100 text-purple-800',
+      biorxiv:         'bg-pink-100 text-pink-800',
+      doaj:            'bg-teal-100 text-teal-800',
+      openalex:        'bg-cyan-100 text-cyan-800',
+      clinicaltrials:  'bg-red-100 text-red-800',
+      core:            'bg-indigo-100 text-indigo-800',
+      rss:             'bg-green-100 text-green-800',
+      hackernews:      'bg-amber-100 text-amber-800',
+      youtube:         'bg-red-100 text-red-800',
+      newsapi:         'bg-gray-100 text-gray-800',
+      html_crawl:      'bg-gray-100 text-gray-800',
+      wikipedia:       'bg-slate-100 text-slate-800',
+    };
+
+    function sourceBadgeClass(source) {
+      return SOURCE_COLORS[source] || 'bg-gray-100 text-gray-700';
+    }
+
+    // ── Date formatter ─────────────────────────────────────────────────────
+    function fmtDate(isoStr) {
+      if (!isoStr) return null;
+      try {
+        return new Date(isoStr).toLocaleDateString('en-US',
+          { year: 'numeric', month: 'short', day: 'numeric' });
+      } catch { return null; }
+    }
+
+    // ── Scroll to source card ──────────────────────────────────────────────
+    function scrollToSource(n) {
+      const el = document.getElementById('source-' + n);
+      if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+
+    // ── Loading state helpers ──────────────────────────────────────────────
+    let slowTimer = null;
+
+    function setLoading(on) {
+      const btn   = document.getElementById('ask-btn');
+      const icon  = document.getElementById('btn-icon');
+      const label = document.getElementById('btn-label');
+      const qa    = document.getElementById('question');
+
+      if (on) {
+        btn.disabled = true;
+        qa.disabled  = true;
+        icon.innerHTML = `<circle cx="12" cy="12" r="10" stroke="currentColor"
+          stroke-width="3" fill="none" stroke-dasharray="31.4" stroke-dashoffset="10"
+          class="spin" style="animation:spin 0.8s linear infinite;transform-origin:center"/>`;
+        label.textContent = 'Searching…';
+
+        // Show slow-response hint after 3 s
+        slowTimer = setTimeout(() => {
+          label.textContent = 'Still searching…';
+        }, 3000);
+
+        document.getElementById('result').innerHTML = `
+          <div class="flex flex-col items-center gap-3 py-16 text-gray-400">
+            <svg class="w-8 h-8 spin" fill="none" stroke="currentColor" stroke-width="2"
+                 viewBox="0 0 24 24" style="animation:spin 0.8s linear infinite;transform-origin:center">
+              <circle cx="12" cy="12" r="10" stroke-dasharray="31.4" stroke-dashoffset="10"/>
+            </svg>
+            <p id="loading-msg" class="text-sm font-medium">Searching and generating answer…</p>
+          </div>`;
+
+        // Update loading message after 3 s
+        setTimeout(() => {
+          const msg = document.getElementById('loading-msg');
+          if (msg) msg.textContent = 'Still searching… this may take a moment';
+        }, 3000);
+
+      } else {
+        clearTimeout(slowTimer);
+        btn.disabled = false;
+        qa.disabled  = false;
+        icon.innerHTML = `<path stroke-linecap="round" stroke-linejoin="round"
+          d="M21 21l-4.35-4.35M17 11A6 6 0 1 1 5 11a6 6 0 0 1 12 0z"/>`;
+        label.textContent = 'Search';
+      }
+    }
+
+    // ── Build source card HTML ─────────────────────────────────────────────
+    function buildSourceCard(r, rank) {
+      const badgeCls = sourceBadgeClass(r.source);
+      const sourceLabel = r.source.charAt(0).toUpperCase() + r.source.slice(1);
+
+      // Author line
+      let authorLine = '';
+      if (r.authors_json && r.authors_json.length > 0) {
+        const first = r.authors_json[0];
+        const name  = first.family || first.name || '';
+        authorLine  = name ? (r.authors_json.length > 1 ? name + ' et al.' : name) : '';
+      } else if (r.author) {
+        authorLine = r.author;
+      }
+
+      // Date
+      const date = fmtDate(r.published_at) || fmtDate(r.collected_at) || '';
+
+      // Link: prefer full_text_url for academic, else url
+      const href = r.full_text_url || r.url || '#';
+
+      // Description snippet
+      const snippet = r.description
+        ? r.description.slice(0, 280) + (r.description.length > 280 ? '…' : '')
+        : (r.content_body ? r.content_body.slice(0, 280) + '…' : '');
+
+      // Score bar (0–100%)
+      const scoreW = Math.round((r.combined_score || 0) * 100);
+
+      return `
+        <div id="source-${rank}"
+             class="bg-white rounded-xl border border-gray-200 p-4 scroll-mt-20 hover:border-indigo-300 transition">
+          <div class="flex items-start gap-3">
+            <!-- Rank -->
+            <span class="flex-none mt-0.5 w-7 h-7 rounded-full bg-indigo-50 text-indigo-700
+                         text-xs font-bold flex items-center justify-center border border-indigo-200">
+              ${rank}
+            </span>
+
+            <div class="flex-1 min-w-0">
+              <!-- Title row -->
+              <div class="flex flex-wrap items-start gap-2 mb-1">
+                <span class="inline-flex items-center text-xs font-semibold px-2 py-0.5 rounded-full ${badgeCls}">
+                  ${sourceLabel}
+                </span>
+                ${r.open_access ? `<span class="inline-flex items-center text-xs font-medium text-teal-700 bg-teal-50 border border-teal-200 rounded-full px-2 py-0.5">🔓 open access</span>` : ''}
+                ${r.doi ? `<span class="text-xs text-gray-400 font-mono truncate max-w-xs">DOI: ${r.doi}</span>` : ''}
+              </div>
+
+              <a href="${href}" target="_blank" rel="noopener noreferrer"
+                 class="text-sm font-semibold text-gray-900 hover:text-indigo-700 leading-snug
+                        line-clamp-2 block mb-1 transition">
+                ${escHtml(r.title || '(untitled)')}
+                <svg class="inline w-3 h-3 mb-0.5 ml-0.5 opacity-40" fill="none"
+                     stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round"
+                        d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6M15 3h6v6M10 14L21 3"/>
+                </svg>
+              </a>
+
+              <!-- Meta line -->
+              <div class="text-xs text-gray-500 flex flex-wrap gap-x-2 gap-y-0.5 mb-2">
+                ${authorLine ? `<span>${escHtml(authorLine)}</span>` : ''}
+                ${r.journal ? `<span>· ${escHtml(r.journal)}</span>` : ''}
+                ${date ? `<span>· ${date}</span>` : ''}
+              </div>
+
+              ${snippet ? `<p class="text-xs text-gray-600 leading-relaxed">${escHtml(snippet)}</p>` : ''}
+
+              <!-- Score bar -->
+              <div class="mt-3 flex items-center gap-2">
+                <div class="score-bar-bg flex-1">
+                  <div class="score-bar-fill" style="width:${scoreW}%"></div>
+                </div>
+                <span class="text-xs text-gray-400 tabular-nums w-8 text-right">
+                  ${(r.combined_score || 0).toFixed(2)}
+                </span>
+              </div>
+            </div>
+          </div>
+        </div>`;
+    }
+
+    // ── Escape HTML ────────────────────────────────────────────────────────
+    function escHtml(str) {
+      return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;');
+    }
+
+    // ── Render citation markers → clickable superscripts ──────────────────
+    function linkCitations(html) {
+      return html.replace(/\[(\d+)\]/g,
+        '<sup class="citation" onclick="scrollToSource($1)">[$1]</sup>');
+    }
+
+    // ── Render full results ────────────────────────────────────────────────
+    function renderResults(data, query) {
+      const { results, total, search_mode, search_time_ms, summary, llm_time_ms } = data;
+
+      let html = '';
+
+      // ── Summary / answer block ──────────────────────────────────────────
+      if (summary) {
+        const rendered = DOMPurify.sanitize(marked.parse(summary));
+        const linked   = linkCitations(rendered);
+        html += `
+          <div class="bg-white rounded-2xl border border-indigo-200 shadow-sm p-5 mb-6">
+            <div class="flex items-center gap-2 mb-3">
+              <span class="text-indigo-600 font-semibold text-sm uppercase tracking-wide">Answer</span>
+              <span class="h-px flex-1 bg-indigo-100"></span>
+            </div>
+            <div id="answer-text" class="text-sm text-gray-800 leading-relaxed prose">
+              ${linked}
+            </div>
+          </div>`;
+      } else if (total === 0) {
+        html += `
+          <div class="rounded-xl bg-gray-50 border border-gray-200 p-5 mb-6 text-center text-gray-500">
+            <p class="font-medium">No results found</p>
+            <p class="text-sm mt-1">Try rephrasing your question or removing filters.</p>
+          </div>`;
+      } else {
+        // results exist but no LLM summary (claude -p unavailable)
+        html += `
+          <div class="rounded-xl bg-amber-50 border border-amber-200 p-4 mb-6 text-amber-800 text-sm">
+            <span class="font-semibold">Summary unavailable</span> — search results are shown below.
+          </div>`;
+      }
+
+      // ── Source cards ────────────────────────────────────────────────────
+      if (results && results.length > 0) {
+        html += `
+          <div class="flex items-center gap-2 mb-3">
+            <span class="text-gray-600 font-semibold text-sm uppercase tracking-wide">Sources</span>
+            <span class="h-px flex-1 bg-gray-200"></span>
+            <span class="text-xs text-gray-400">${total} result${total !== 1 ? 's' : ''}</span>
+          </div>
+          <div class="flex flex-col gap-3">`;
+
+        results.forEach((r, i) => {
+          html += buildSourceCard(r, i + 1);
+        });
+
+        html += `</div>`;
+      }
+
+      // ── Footer ──────────────────────────────────────────────────────────
+      const searchSec = (search_time_ms / 1000).toFixed(2);
+      const llmLabel  = llm_time_ms != null
+        ? ` · answer ${(llm_time_ms / 1000).toFixed(1)}s`
+        : '';
+
+      html += `
+        <div class="mt-6 text-xs text-gray-400 flex flex-wrap gap-x-3 gap-y-1 justify-end">
+          <span class="font-medium ${search_mode === 'hybrid' ? 'text-indigo-400' : 'text-gray-400'}">
+            ${search_mode}
+          </span>
+          <span>search ${searchSec}s${llmLabel}</span>
+          <span>· Powered by autism-search + Claude</span>
+        </div>`;
+
+      document.getElementById('result').innerHTML = html;
+    }
+
+    // ── Main search function ───────────────────────────────────────────────
+    async function doSearch() {
+      const question = document.getElementById('question').value.trim();
+      if (!question) {
+        document.getElementById('question').focus();
+        return;
+      }
+
+      const source = document.getElementById('filter-source').value;
+      const days   = document.getElementById('filter-days').value;
+      const limit  = document.getElementById('filter-limit').value;
+
+      const params = new URLSearchParams({ q: question, limit });
+      if (source) params.set('source', source);
+      if (days)   params.set('days', days);
+
+      setLoading(true);
+
+      try {
+        const resp = await fetch(API_BASE + '/api/search?' + params.toString());
+        if (!resp.ok) {
+          let msg = `Search failed (HTTP ${resp.status})`;
+          try { const j = await resp.json(); msg = j.detail || j.error || msg; } catch {}
+          document.getElementById('result').innerHTML = `
+            <div class="rounded-xl bg-red-50 border border-red-200 p-4 text-red-800 text-sm">
+              <span class="font-semibold">Error:</span> ${escHtml(msg)}
+            </div>`;
+          return;
+        }
+        const data = await resp.json();
+        renderResults(data, question);
+      } catch (err) {
+        document.getElementById('result').innerHTML = `
+          <div class="rounded-xl bg-red-50 border border-red-200 p-4 text-red-800 text-sm">
+            <span class="font-semibold">Network error:</span> Could not reach the search service.
+          </div>`;
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    // ── Keyboard shortcut: Cmd/Ctrl+Enter ─────────────────────────────────
+    document.getElementById('question').addEventListener('keydown', function(e) {
+      if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') {
+        e.preventDefault();
+        doSearch();
+      }
+    });
+
+    // Disable Ask button when textarea is empty
+    document.getElementById('question').addEventListener('input', function() {
+      document.getElementById('ask-btn').disabled = this.value.trim() === '';
+    });
+    // Initial state
+    document.getElementById('ask-btn').disabled = true;
+
+    // ── On page load: stats + health ───────────────────────────────────────
+    document.addEventListener('DOMContentLoaded', function() {
+
+      // Stats badge
+      fetch(API_BASE + '/api/stats')
+        .then(r => r.json())
+        .then(d => {
+          const n = (d.total_items || 0).toLocaleString();
+          document.getElementById('stats-badge').textContent = n + ' items indexed';
+        })
+        .catch(() => {
+          document.getElementById('stats-badge').textContent = '— items indexed';
+        });
+
+      // Health indicator
+      fetch(API_BASE + '/api/health')
+        .then(r => r.json())
+        .then(d => {
+          const dot = document.getElementById('health-dot');
+          dot.className = (d.status === 'ok')
+            ? 'h-2 w-2 rounded-full bg-green-500'
+            : 'h-2 w-2 rounded-full bg-red-500';
+          dot.title = d.status === 'ok' ? 'Search service: connected' : 'Search service: error';
+        })
+        .catch(() => {
+          const dot = document.getElementById('health-dot');
+          dot.className = 'h-2 w-2 rounded-full bg-red-500';
+          dot.title = 'Search service: unreachable';
+        });
+    });
+  </script>
+
+</body>
+</html>
