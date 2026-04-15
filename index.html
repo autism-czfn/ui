@@ -870,9 +870,68 @@ function switchTab(name) {
     else { btn.classList.remove('tab-btn-active'); btn.classList.add('tab-btn-inactive'); }
   });
   localStorage.setItem('active_tab',name);
-  if(name==='log')             loadInterventions();
+  if(name==='log')           { loadInterventions(); loadTodayEntry(); }
   else if(name==='insights')   loadInsights();
   else if(name==='clinician')  loadClinicianReport();
+}
+
+// ════════════════════════════════════════════════════════════════
+// LOAD TODAY'S EXISTING ENTRY INTO LOG FORM
+// ════════════════════════════════════════════════════════════════
+async function loadTodayEntry() {
+  const today = new Date().toISOString().slice(0, 10);
+  try {
+    // Fetch most recent log entry from today
+    const logsResp = await fetch(COLLECT_API + '/logs?days=1&limit=50');
+    if (logsResp.ok) {
+      const data = await logsResp.json();
+      const todayLog = (data.logs || []).find(l => (l.logged_at || '').startsWith(today));
+      if (todayLog) {
+        voiceLogId = todayLog.id;
+        voiceLogDate = today;
+        document.getElementById('log-event').value = todayLog.event || '';
+        document.getElementById('log-context').value = todayLog.context || '';
+        document.getElementById('log-response').value = todayLog.response || '';
+        document.getElementById('log-outcome').value = todayLog.outcome || '';
+        document.getElementById('log-notes').value = todayLog.notes || '';
+        if (todayLog.severity) {
+          document.getElementById('log-severity').value = todayLog.severity;
+          document.getElementById('log-severity-val').textContent = todayLog.severity;
+        }
+        selectedTriggers.clear();
+        (todayLog.triggers || []).forEach(t => selectedTriggers.add(t));
+        buildTagPills('log-trigger-tags', TRIGGER_OPTIONS, selectedTriggers);
+        selectedTags.clear();
+        (todayLog.tags || []).forEach(t => selectedTags.add(t));
+        buildTagPills('log-tags', TAG_OPTIONS, selectedTags);
+        // Switch button to Update Log
+        const btn = document.getElementById('log-submit-btn');
+        if (btn) btn.innerHTML = 'Update Log ✅';
+      }
+    }
+  } catch(e) { /* silent — form stays blank */ }
+
+  try {
+    // Fetch today's check-in ratings
+    const ciResp = await fetch(COLLECT_API + '/daily-checks/' + today);
+    if (ciResp.ok) {
+      const ci = await ciResp.json();
+      const ratings = ci.ratings || {};
+      const RATING_KEYS = [
+        'sleep_quality','mood','sensory_sensitivity','appetite',
+        'social_tolerance','meltdown_count','routine_adherence',
+        'communication_ease','physical_activity','caregiver_rating',
+      ];
+      RATING_KEYS.forEach(k => {
+        if (ratings[k] == null) return;
+        const el = document.getElementById('ci-' + k);
+        if (el) { el.value = ratings[k]; }
+        const val = document.getElementById('ci-' + k + '-val');
+        if (val) val.textContent = ratings[k];
+      });
+      if (ci.notes) document.getElementById('ci-notes').value = ci.notes;
+    }
+  } catch(e) { /* silent */ }
 }
 
 // ════════════════════════════════════════════════════════════════
@@ -909,7 +968,7 @@ async function loadInterventions() {
   const container=document.getElementById('intervention-list');
   container.innerHTML='<p class="text-xs text-gray-400">Loading…</p>';
   try {
-    const resp=await fetch(COLLECT_API+'/api/v1/interventions?status=open');
+    const resp=await fetch(COLLECT_API+'/interventions?status=open');
     if(!resp.ok) throw new Error('HTTP '+resp.status);
     const data=await resp.json();
     const items=data.items||[];
@@ -983,7 +1042,7 @@ async function submitOutcomeForm(id) {
   const body={ outcome_status:statusInput.value, outcome_note:note,
                resolved_at:resolvedAt?new Date(resolvedAt).toISOString():new Date().toISOString() };
   try {
-    const resp=await fetch(COLLECT_API+'/api/v1/interventions/'+id+'/outcome',
+    const resp=await fetch(COLLECT_API+'/interventions/'+id+'/outcome',
       {method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
     if(!resp.ok){
       let msg='HTTP '+resp.status;
@@ -1121,7 +1180,7 @@ async function submitCombined() {
         tags:      [...selectedTags],
         notes:     document.getElementById('log-notes').value || null,
       };
-      const resp = await fetch(COLLECT_API + '/api/v1/logs/' + voiceLogId,
+      const resp = await fetch(COLLECT_API + '/logs/' + voiceLogId,
         { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
       if (!resp.ok) {
         const j = await resp.json().catch(() => ({}));
@@ -1141,7 +1200,7 @@ async function submitCombined() {
         tags:      [...selectedTags],
         notes:     document.getElementById('log-notes').value || null,
       };
-      const resp = await fetch(COLLECT_API + '/api/v1/logs',
+      const resp = await fetch(COLLECT_API + '/logs',
         { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
       if (resp.status === 422) {
         const j = await resp.json();
@@ -1240,7 +1299,7 @@ async function dlVoiceFill() {
       // Show voice banner
       const banner = document.getElementById('voice-banner');
       document.getElementById('voice-banner-text').textContent =
-        'Auto-saved. Review and click "Update Log" to submit changes, or leave as-is.';
+        'Saved automatically. Fields filled below for your review.';
       document.getElementById('voice-transcript').textContent =
         'Heard: ' + (data.transcription || '(nothing detected)');
       banner.classList.remove('hidden');
@@ -1364,20 +1423,21 @@ function refreshInsights() {
 
 function renderWeeklySummary(data) {
   const el=document.getElementById('weekly-summary');
-  if(!data||(!data.event_count&&!data.summary_text)){
+  const stats=data.stats||{};
+  const eventCount=stats.event_count||0;
+  if(!eventCount&&!data.summary_text){
     el.innerHTML='<p class="text-xs text-gray-500">Not enough data yet — keep logging daily.</p>'; return;
   }
-  const trendCls={ improving:'bg-green-100 text-green-800', stable:'bg-gray-100 text-gray-600', worsening:'bg-red-100 text-red-800' };
-  const cls=trendCls[data.trend_direction]||trendCls.stable;
-  const triggers=(data.top_triggers||[]).map(t=>`<li>${escHtml(t)}</li>`).join('');
-  const helped=(data.what_helped||[]).map(t=>`<li>${escHtml(t)}</li>`).join('');
+  const meltdownCount=stats.meltdown_count??0;
+  const rawTriggers=stats.top_triggers||[];
+  const triggers=rawTriggers.map(t=>`<li>${escHtml(typeof t==='string'?t:t.trigger||'')}</li>`).join('');
+  const helped=(stats.interventions_adopted||[]).map(t=>`<li>${escHtml(t)}</li>`).join('');
   el.innerHTML=`
     <div class="space-y-3">
       <div class="flex flex-wrap gap-4 text-sm">
-        <span class="text-gray-500">${escHtml(data.period_start||'')} – ${escHtml(data.period_end||'')}</span>
-        <span class="font-semibold text-gray-800">${data.event_count||0} events</span>
-        <span class="font-semibold text-gray-800">${data.meltdown_count||0} meltdowns</span>
-        ${data.trend_direction?`<span class="px-2 py-0.5 rounded-full text-xs font-semibold ${cls}">${escHtml(data.trend_direction)}</span>`:''}
+        <span class="text-gray-500">${escHtml(data.week_start||'')} – ${escHtml(data.week_end||'')}</span>
+        <span class="font-semibold text-gray-800">${eventCount} events</span>
+        <span class="font-semibold text-gray-800">${meltdownCount} meltdowns</span>
       </div>
       ${triggers?`<div><p class="text-xs font-semibold text-gray-600 mb-1">Top triggers</p><ul class="text-xs text-gray-700 list-disc list-inside space-y-0.5">${triggers}</ul></div>`:''}
       ${helped?`<div><p class="text-xs font-semibold text-gray-600 mb-1">What helped</p><ul class="text-xs text-gray-700 list-disc list-inside space-y-0.5">${helped}</ul></div>`:''}
