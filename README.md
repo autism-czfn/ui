@@ -12,7 +12,7 @@
     │  GET /          → index.html（静态页面）
     ▼
 UI Web 服务器（serve.py）
-  <LAN_IP>:18000
+  <LAN_IP>:19000
 
     │
     │  GET /api/search?q=...   跨域请求（CORS）
@@ -130,7 +130,7 @@ UI 层本身不含任何搜索逻辑，所有搜索与 AI 摘要均由 `autism-s
 
 选择 `1) Start / Restart service` 即可。
 
-服务启动后访问：**https://\<LAN_IP\>:18000/**（LAN IP 由服务器自动检测）
+服务启动后访问：**https://\<LAN_IP\>:19000/**（LAN IP 由服务器自动检测）
 
 ---
 

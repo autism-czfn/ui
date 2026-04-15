@@ -3,1306 +3,1594 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Autism Q&amp;A + Daily Log</title>
+  <title>Autism Support</title>
 
-  <!-- Tailwind CSS -->
   <script src="https://cdn.tailwindcss.com"></script>
-
-  <!-- marked.js — Markdown → HTML -->
   <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
-
-  <!-- DOMPurify — sanitize LLM output before innerHTML -->
   <script src="https://cdn.jsdelivr.net/npm/dompurify@3.1.6/dist/purify.min.js"></script>
 
   <style>
-    /* Citation superscripts */
-    .citation {
-      cursor: pointer;
-      color: #2563eb;
-      font-weight: 600;
-      font-size: 0.75em;
-      vertical-align: super;
-      text-decoration: none;
+    .citation { cursor:pointer; color:#2563eb; font-weight:600; font-size:.75em; vertical-align:super; text-decoration:none; }
+    .citation:hover { color:#1d4ed8; }
+    .score-bar-bg  { background:#e5e7eb; border-radius:9999px; height:4px; }
+    .score-bar-fill { background:#6366f1; border-radius:9999px; height:4px; }
+    html { scroll-behavior:smooth; }
+    @keyframes spin { to { transform:rotate(360deg); } }
+    .spin { animation:spin .8s linear infinite; }
+    #answer-text h1,#answer-text h2,#answer-text h3 { font-weight:700; margin-top:1em; margin-bottom:.4em; }
+    #answer-text ul,#answer-text ol { padding-left:1.5em; margin:.5em 0; }
+    #answer-text ul { list-style-type:disc; }
+    #answer-text ol { list-style-type:decimal; }
+    #answer-text p  { margin-bottom:.6em; }
+    #answer-text strong { font-weight:700; }
+    #answer-text em { font-style:italic; }
+    .dl-card { background:white; border-radius:1rem; border:1px solid #e5e7eb; box-shadow:0 1px 3px rgba(0,0,0,.06); padding:1.25rem; }
+    .dl-section-title { font-weight:700; font-size:.95rem; color:#374151; display:flex; align-items:center; gap:.5rem; margin-bottom:.85rem; }
+    .dl-btn-secondary { display:inline-flex; align-items:center; gap:.4rem; padding:.45rem 1rem; border-radius:.65rem; border:1.5px solid #e5e7eb; font-size:.82rem; font-weight:500; color:#374151; background:white; cursor:pointer; transition:all .15s; white-space:nowrap; }
+    .dl-btn-secondary:hover { border-color:#a5b4fc; color:#4338ca; background:#eef2ff; }
+    .dl-btn-secondary.recording { border-color:#f87171; color:#dc2626; background:#fef2f2; }
+    .dl-input { width:100%; border:1.5px solid #e5e7eb; border-radius:.5rem; padding:.45rem .65rem; font-size:.85rem; outline:none; transition:border-color .15s; background:white; color:#374151; }
+    .dl-input:focus { border-color:#818cf8; }
+    .tab-btn-active   { border-bottom:2px solid #4f46e5; color:#4338ca; font-weight:700; }
+    .tab-btn-inactive { border-bottom:2px solid transparent; color:#6b7280; font-weight:500; }
+    .tab-btn-inactive:hover { color:#374151; }
+    /* tag pill toggle */
+    .tag-pill { padding:.25rem .75rem; border-radius:9999px; font-size:.75rem; font-weight:500; border:1.5px solid #e5e7eb; background:white; color:#6b7280; cursor:pointer; transition:all .15s; }
+    .tag-pill.active { border-color:#6366f1; background:#eef2ff; color:#3730a3; }
+    /* intervention row */
+    .intervention-row { border:1px solid #e5e7eb; border-radius:.75rem; padding:.85rem 1rem; background:white; }
+    /* pattern card confidence badge */
+    .conf-badge { display:inline-flex; align-items:center; font-size:.7rem; font-weight:700; padding:.2rem .65rem; border-radius:9999px; border:1.5px solid; }
+    /* print: hide chrome */
+    @media print {
+      header, #tab-bar, #export-btn, .no-print { display:none !important; }
+      body { background:white; }
+      .dl-card { box-shadow:none; border:1px solid #ddd; }
     }
-    .citation:hover { color: #1d4ed8; }
-
-    /* Score bar */
-    .score-bar-bg { background: #e5e7eb; border-radius: 9999px; height: 4px; }
-    .score-bar-fill { background: #6366f1; border-radius: 9999px; height: 4px; }
-
-    /* Smooth scroll */
-    html { scroll-behavior: smooth; }
-
-    /* Spinner animation */
-    @keyframes spin { to { transform: rotate(360deg); } }
-    .spin { animation: spin 0.8s linear infinite; }
-
-    /* Answer prose */
-    #answer-text h1, #answer-text h2, #answer-text h3 {
-      font-weight: 700; margin-top: 1em; margin-bottom: 0.4em;
-    }
-    #answer-text ul, #answer-text ol {
-      padding-left: 1.5em; margin: 0.5em 0;
-    }
-    #answer-text ul { list-style-type: disc; }
-    #answer-text ol { list-style-type: decimal; }
-    #answer-text p { margin-bottom: 0.6em; }
-    #answer-text strong { font-weight: 700; }
-    #answer-text em { font-style: italic; }
-
-    /* ── Daily Log shared styles ──────────────────────────────────── */
-    .dl-card {
-      background: white; border-radius: 1rem; border: 1px solid #e5e7eb;
-      box-shadow: 0 1px 3px rgba(0,0,0,.06); padding: 1.25rem;
-    }
-    .dl-section-title {
-      font-weight: 700; font-size: 0.95rem; color: #374151;
-      display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.85rem;
-    }
-    .dl-btn-secondary {
-      display: inline-flex; align-items: center; gap: 0.4rem;
-      padding: 0.45rem 1rem; border-radius: 0.65rem;
-      border: 1.5px solid #e5e7eb; font-size: 0.82rem; font-weight: 500;
-      color: #374151; background: white; cursor: pointer; transition: all 0.15s;
-      white-space: nowrap;
-    }
-    .dl-btn-secondary:hover { border-color: #a5b4fc; color: #4338ca; background: #eef2ff; }
-    .dl-btn-secondary.recording { border-color: #f87171; color: #dc2626; background: #fef2f2; }
-
-    .dl-emoji-btn {
-      font-size: 1.75rem; padding: 0.4rem 0.6rem; border-radius: 0.75rem;
-      border: 2px solid transparent; cursor: pointer; transition: all 0.15s;
-      background: transparent; line-height: 1;
-    }
-    .dl-emoji-btn:hover { background: #f3f4f6; }
-    .dl-emoji-btn.selected {
-      border-color: #818cf8; background: #eef2ff;
-      transform: scale(1.15);
-    }
-
-    .dl-toggle-btn {
-      flex: 1; padding: 0.65rem 0.5rem; border-radius: 0.75rem;
-      border: 2px solid #e5e7eb; font-size: 0.85rem; font-weight: 600;
-      cursor: pointer; transition: all 0.15s; background: white; color: #6b7280;
-    }
-    .dl-toggle-btn:hover { border-color: #a5b4fc; color: #4338ca; }
-    .dl-toggle-btn.selected-yes { border-color: #6366f1; background: #eef2ff; color: #3730a3; }
-    .dl-toggle-btn.selected-no  { border-color: #6b7280; background: #f9fafb; color: #374151; }
-    .dl-toggle-btn.selected-taken  { border-color: #22c55e; background: #f0fdf4; color: #15803d; }
-    .dl-toggle-btn.selected-missed { border-color: #ef4444; background: #fef2f2; color: #dc2626; }
-
-    .dl-checkbox-label {
-      display: flex; align-items: center; gap: 0.5rem;
-      padding: 0.45rem 0.75rem; border-radius: 0.65rem;
-      border: 1.5px solid #e5e7eb; font-size: 0.82rem; cursor: pointer;
-      transition: all 0.15s; user-select: none;
-    }
-    .dl-checkbox-label:has(input:checked) {
-      border-color: #818cf8; background: #eef2ff; color: #3730a3;
-    }
-    .dl-checkbox-label input { accent-color: #6366f1; width: 14px; height: 14px; }
-
-    .dl-input {
-      width: 100%; border: 1.5px solid #e5e7eb; border-radius: 0.5rem;
-      padding: 0.45rem 0.65rem; font-size: 0.85rem; outline: none;
-      transition: border-color 0.15s; background: white; color: #374151;
-    }
-    .dl-input:focus { border-color: #818cf8; }
-
-    .dl-transcript {
-      margin-top: 0.5rem; padding: 0.5rem 0.75rem;
-      background: #f8fafc; border-radius: 0.5rem; border: 1px solid #e2e8f0;
-      font-size: 0.82rem; color: #475569; font-style: italic;
-    }
-
-    .dl-photo-thumb {
-      max-height: 8rem; border-radius: 0.5rem; object-fit: cover;
-      border: 1px solid #e5e7eb;
-    }
-
-    /* Tab bar */
-    .tab-btn-active   { border-bottom: 2px solid #4f46e5; color: #4338ca; font-weight: 700; }
-    .tab-btn-inactive { border-bottom: 2px solid transparent; color: #6b7280; font-weight: 500; }
-    .tab-btn-inactive:hover { color: #374151; }
   </style>
 </head>
 <body class="bg-gray-50 min-h-screen text-gray-900">
 
-  <!-- ── HEADER ──────────────────────────────────────────────────────────── -->
-  <header class="bg-white border-b border-gray-200 sticky top-0 z-10">
-    <div class="max-w-3xl mx-auto px-4 py-3 flex items-center justify-between">
-      <div class="flex items-center gap-2">
-        <span class="text-2xl">🧩</span>
-        <span class="font-bold text-lg tracking-tight">Autism Q&amp;A</span>
-      </div>
-      <div class="flex items-center gap-3">
-        <!-- health dot -->
-        <span id="health-dot" class="h-2 w-2 rounded-full bg-gray-300" title="Search service status"></span>
-        <!-- stats badge -->
-        <span id="stats-badge"
-              class="text-xs bg-indigo-50 text-indigo-700 border border-indigo-200 rounded-full px-3 py-1 font-medium">
-          loading…
-        </span>
-      </div>
+<!-- ── HEADER ──────────────────────────────────────────────────── -->
+<header class="bg-white border-b border-gray-200 sticky top-0 z-10">
+  <div class="max-w-3xl mx-auto px-4 py-3 flex items-center justify-between">
+    <div class="flex items-center gap-2">
+      <span class="text-2xl">🧩</span>
+      <span class="font-bold text-lg tracking-tight">Autism Support</span>
     </div>
-  </header>
+    <div class="flex items-center gap-3">
+      <span id="health-dot" class="h-2 w-2 rounded-full bg-gray-300" title="Search service status"></span>
+      <span id="stats-badge"
+            class="text-xs bg-indigo-50 text-indigo-700 border border-indigo-200 rounded-full px-3 py-1 font-medium">
+        loading…
+      </span>
+    </div>
+  </div>
+</header>
 
-  <!-- ── TAB BAR ─────────────────────────────────────────────────────────── -->
-  <div class="sticky top-[57px] z-10 bg-white border-b border-gray-200 shadow-sm">
-    <div class="max-w-3xl mx-auto px-4 flex gap-0">
-      <button id="tab-btn-search"
-              onclick="switchTab('search')"
-              class="tab-btn tab-btn-active px-5 py-3 text-sm -mb-px transition cursor-pointer bg-transparent border-0">
-        🔍 Search
+<!-- ── TAB BAR ──────────────────────────────────────────────────── -->
+<div id="tab-bar" class="sticky top-[57px] z-10 bg-white border-b border-gray-200 shadow-sm">
+  <div class="max-w-3xl mx-auto px-4 flex gap-0 overflow-x-auto">
+    <button id="tab-btn-search"    onclick="switchTab('search')"    class="tab-btn tab-btn-active    flex-none px-4 py-3 text-sm -mb-px transition cursor-pointer bg-transparent border-0">🔍 Search</button>
+    <button id="tab-btn-log"       onclick="switchTab('log')"       class="tab-btn tab-btn-inactive  flex-none px-4 py-3 text-sm -mb-px transition cursor-pointer bg-transparent border-0">📋 Log Today</button>
+    <button id="tab-btn-insights"  onclick="switchTab('insights')"  class="tab-btn tab-btn-inactive  flex-none px-4 py-3 text-sm -mb-px transition cursor-pointer bg-transparent border-0">📊 Insights</button>
+    <button id="tab-btn-clinician" onclick="switchTab('clinician')" class="tab-btn tab-btn-inactive  flex-none px-4 py-3 text-sm -mb-px transition cursor-pointer bg-transparent border-0">🏥 Clinician</button>
+  </div>
+</div>
+
+<!-- ════════════════════════════════════════════════════════════════
+     PANEL 1 — SEARCH
+     ════════════════════════════════════════════════════════════════ -->
+<div id="panel-search">
+<main class="max-w-3xl mx-auto px-4 py-8">
+
+  <div class="bg-white rounded-2xl border border-gray-200 shadow-sm p-5 mb-6">
+    <label class="block text-sm font-semibold text-gray-700 mb-2">Ask anything about autism</label>
+    <div class="flex gap-2">
+      <textarea id="question" rows="2"
+                placeholder="What are early signs of autism in toddlers?"
+                class="flex-1 resize-none rounded-xl border border-gray-300 px-4 py-2.5 text-sm
+                       focus:outline-none focus:ring-2 focus:ring-indigo-400 focus:border-transparent
+                       placeholder-gray-400 transition"></textarea>
+      <button id="ask-btn" onclick="doSearch()"
+              class="self-end flex items-center gap-1.5 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50
+                     text-white text-sm font-semibold rounded-xl px-5 py-2.5 transition whitespace-nowrap">
+        <svg id="btn-icon" class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-4.35-4.35M17 11A6 6 0 1 1 5 11a6 6 0 0 1 12 0z"/>
+        </svg>
+        <span id="btn-label">Search</span>
       </button>
-      <button id="tab-btn-daily-log"
-              onclick="switchTab('daily-log')"
-              class="tab-btn tab-btn-inactive px-5 py-3 text-sm -mb-px transition cursor-pointer bg-transparent border-0">
-        📋 Daily Log
-      </button>
+    </div>
+    <details id="filter-panel" class="mt-3">
+      <summary class="cursor-pointer text-xs font-medium text-gray-500 hover:text-gray-700 select-none list-none flex items-center gap-1 w-fit">
+        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M3 4h18M7 8h10M10 12h4"/>
+        </svg>
+        Filters
+      </summary>
+      <div class="mt-3 flex flex-wrap gap-3">
+        <div>
+          <label class="block text-xs text-gray-500 mb-1">Source</label>
+          <select id="filter-source" class="text-sm border border-gray-300 rounded-lg px-3 py-1.5 focus:outline-none focus:ring-2 focus:ring-indigo-400 bg-white">
+            <option value="">All sources</option>
+            <option value="reddit">Reddit</option>
+            <option value="pubmed">PubMed</option>
+            <option value="europepmc">Europe PMC</option>
+            <option value="semanticscholar">Semantic Scholar</option>
+            <option value="crossref">CrossRef</option>
+            <option value="biorxiv">bioRxiv</option>
+            <option value="doaj">DOAJ</option>
+            <option value="openalex">OpenAlex</option>
+            <option value="clinicaltrials">ClinicalTrials.gov</option>
+            <option value="core">CORE</option>
+            <option value="rss">Spectrum News / RSS</option>
+            <option value="hackernews">Hacker News</option>
+            <option value="youtube">YouTube</option>
+            <option value="newsapi">NewsAPI</option>
+            <option value="wikipedia">Wikipedia</option>
+            <option value="html_crawl">Web crawl</option>
+          </select>
+        </div>
+        <div>
+          <label class="block text-xs text-gray-500 mb-1">Time</label>
+          <select id="filter-days" class="text-sm border border-gray-300 rounded-lg px-3 py-1.5 focus:outline-none focus:ring-2 focus:ring-indigo-400 bg-white">
+            <option value="">Any time</option>
+            <option value="30">Last 30 days</option>
+            <option value="90">Last 90 days</option>
+            <option value="365">Last year</option>
+          </select>
+        </div>
+        <div>
+          <label class="block text-xs text-gray-500 mb-1">Results</label>
+          <select id="filter-limit" class="text-sm border border-gray-300 rounded-lg px-3 py-1.5 focus:outline-none focus:ring-2 focus:ring-indigo-400 bg-white">
+            <option value="10">Top 10</option>
+            <option value="20">Top 20</option>
+            <option value="50">Top 50</option>
+          </select>
+        </div>
+      </div>
+    </details>
+  </div>
+
+  <div id="result">
+    <div class="text-center text-gray-400 py-16 select-none">
+      <div class="text-5xl mb-3">🔍</div>
+      <p class="text-base font-medium">Ask a question above to get started</p>
+      <p class="text-sm mt-1">Searches across research papers, Reddit, news, and more</p>
     </div>
   </div>
 
-  <!-- ── SEARCH PANEL ─────────────────────────────────────────────────────── -->
-  <div id="panel-search">
-  <main class="max-w-3xl mx-auto px-4 py-8">
+</main>
+</div><!-- /panel-search -->
 
-    <!-- Search form -->
-    <div class="bg-white rounded-2xl border border-gray-200 shadow-sm p-5 mb-6">
-      <label class="block text-sm font-semibold text-gray-700 mb-2">
-        Ask anything about autism
+<!-- ════════════════════════════════════════════════════════════════
+     PANEL 2 — LOG TODAY
+     ════════════════════════════════════════════════════════════════ -->
+<div id="panel-log" class="hidden">
+<main class="max-w-3xl mx-auto px-4 py-6 space-y-4">
+
+  <!-- Date banner -->
+  <div id="dl-date-banner" class="text-center text-gray-500 text-sm py-1 font-medium"></div>
+
+  <!-- Voice banner (shown after MAPPED state) -->
+  <div id="voice-banner" class="hidden bg-indigo-50 border border-indigo-200 rounded-xl px-4 py-3 text-sm text-indigo-800 space-y-1">
+    <p id="voice-banner-text" class="font-medium"></p>
+    <p id="voice-transcript" class="text-xs text-indigo-600 italic"></p>
+  </div>
+
+  <!-- Event log card -->
+  <div class="dl-card space-y-4">
+    <div class="dl-section-title">⚡ Log an Event</div>
+    <input type="hidden" id="log-child-id" value="default" />
+
+    <div>
+      <label class="text-xs font-semibold text-gray-600 flex items-center gap-2 mb-1">
+        What happened? <span class="text-red-500">*</span>
+        <span id="vi-event" class="hidden text-indigo-500 text-xs font-normal">🎙 voice</span>
       </label>
+      <textarea id="log-event" rows="2" placeholder="Describe the event…" class="dl-input"></textarea>
+      <p id="log-event-err" class="hidden text-xs text-red-500 mt-1"></p>
+    </div>
 
+    <div>
+      <label class="text-xs font-semibold text-gray-600 flex items-center gap-2 mb-2">
+        Triggers (select all that apply)
+        <span id="vi-triggers" class="hidden text-indigo-500 text-xs font-normal">🎙 voice</span>
+      </label>
+      <div id="log-trigger-tags" class="flex flex-wrap gap-2"></div>
+    </div>
+
+    <div>
+      <label class="text-xs font-semibold text-gray-600 flex items-center gap-2 mb-1">
+        Context
+        <span id="vi-context" class="hidden text-indigo-500 text-xs font-normal">🎙 voice</span>
+      </label>
+      <input type="text" id="log-context" placeholder="Where, when, what was happening…" class="dl-input" />
+    </div>
+
+    <div>
+      <label class="text-xs font-semibold text-gray-600 flex items-center gap-2 mb-1">
+        Response / what was done
+        <span id="vi-response" class="hidden text-indigo-500 text-xs font-normal">🎙 voice</span>
+      </label>
+      <input type="text" id="log-response" placeholder="How did you respond?" class="dl-input" />
+    </div>
+
+    <div>
+      <label class="text-xs font-semibold text-gray-600 flex items-center gap-2 mb-1">
+        Outcome
+        <span id="vi-outcome" class="hidden text-indigo-500 text-xs font-normal">🎙 voice</span>
+      </label>
+      <input type="text" id="log-outcome" placeholder="How did it resolve?" class="dl-input" />
+    </div>
+
+    <div>
+      <label class="text-xs font-semibold text-gray-600 flex items-center gap-2 mb-1">
+        Severity <span class="text-red-500">*</span>
+        <span class="font-normal text-gray-400">(1 = mild · 5 = severe)</span>
+        <span id="vi-severity" class="hidden text-indigo-500 text-xs font-normal">🎙 voice</span>
+      </label>
+      <div class="flex items-center gap-3">
+        <input type="range" id="log-severity" min="1" max="5" value="3"
+               oninput="document.getElementById('log-severity-val').textContent=this.value"
+               class="flex-1 accent-indigo-600" />
+        <span id="log-severity-val" class="text-sm font-bold text-indigo-600 w-4 text-center">3</span>
+      </div>
+      <p id="log-severity-err" class="hidden text-xs text-red-500 mt-1"></p>
+    </div>
+
+    <div>
+      <label class="text-xs font-semibold text-gray-600 flex items-center gap-2 mb-2">
+        Tags (optional)
+        <span id="vi-tags" class="hidden text-indigo-500 text-xs font-normal">🎙 voice</span>
+      </label>
+      <div id="log-tags" class="flex flex-wrap gap-2"></div>
+    </div>
+
+    <div>
+      <label class="text-xs font-semibold text-gray-600 flex items-center gap-2 mb-1">
+        Notes
+        <span id="vi-notes" class="hidden text-indigo-500 text-xs font-normal">🎙 voice</span>
+      </label>
+      <textarea id="log-notes" rows="2" placeholder="Anything else…" class="dl-input"></textarea>
+    </div>
+  </div>
+
+  <!-- Daily Ratings card -->
+  <div class="dl-card space-y-4">
+    <div class="dl-section-title">📊 Daily Ratings <span class="font-normal text-gray-400 text-xs">(all optional)</span></div>
+
+    <div>
+      <label class="text-xs font-semibold text-gray-600 flex justify-between mb-1">
+        <span>Sleep Quality <span id="vi-sleep_quality" class="hidden text-indigo-500 font-normal">🎙 voice</span></span>
+        <span class="font-normal text-gray-400">1=very poor · 5=excellent</span>
+      </label>
+      <div class="flex items-center gap-3">
+        <input type="range" id="ci-sleep_quality" min="1" max="5" value="3"
+               oninput="document.getElementById('ci-sleep_quality-val').textContent=this.value"
+               class="flex-1 accent-indigo-600" />
+        <span id="ci-sleep_quality-val" class="text-sm font-bold text-indigo-600 w-4 text-center">3</span>
+      </div>
+    </div>
+
+    <div>
+      <label class="text-xs font-semibold text-gray-600 flex justify-between mb-1">
+        <span>Mood <span id="vi-mood" class="hidden text-indigo-500 font-normal">🎙 voice</span></span>
+        <span class="font-normal text-gray-400">1=very low · 5=very positive</span>
+      </label>
+      <div class="flex items-center gap-3">
+        <input type="range" id="ci-mood" min="1" max="5" value="3"
+               oninput="document.getElementById('ci-mood-val').textContent=this.value"
+               class="flex-1 accent-indigo-600" />
+        <span id="ci-mood-val" class="text-sm font-bold text-indigo-600 w-4 text-center">3</span>
+      </div>
+    </div>
+
+    <div>
+      <label class="text-xs font-semibold text-gray-600 flex justify-between mb-1">
+        <span>Sensory Sensitivity <span id="vi-sensory_sensitivity" class="hidden text-indigo-500 font-normal">🎙 voice</span></span>
+        <span class="font-normal text-gray-400">1=overwhelmed · 5=no issues</span>
+      </label>
+      <div class="flex items-center gap-3">
+        <input type="range" id="ci-sensory_sensitivity" min="1" max="5" value="3"
+               oninput="document.getElementById('ci-sensory_sensitivity-val').textContent=this.value"
+               class="flex-1 accent-indigo-600" />
+        <span id="ci-sensory_sensitivity-val" class="text-sm font-bold text-indigo-600 w-4 text-center">3</span>
+      </div>
+    </div>
+
+    <div>
+      <label class="text-xs font-semibold text-gray-600 flex justify-between mb-1">
+        <span>Appetite <span id="vi-appetite" class="hidden text-indigo-500 font-normal">🎙 voice</span></span>
+        <span class="font-normal text-gray-400">1=refused food · 5=ate well</span>
+      </label>
+      <div class="flex items-center gap-3">
+        <input type="range" id="ci-appetite" min="1" max="5" value="3"
+               oninput="document.getElementById('ci-appetite-val').textContent=this.value"
+               class="flex-1 accent-indigo-600" />
+        <span id="ci-appetite-val" class="text-sm font-bold text-indigo-600 w-4 text-center">3</span>
+      </div>
+    </div>
+
+    <div>
+      <label class="text-xs font-semibold text-gray-600 flex justify-between mb-1">
+        <span>Social Tolerance <span id="vi-social_tolerance" class="hidden text-indigo-500 font-normal">🎙 voice</span></span>
+        <span class="font-normal text-gray-400">1=withdrawn · 5=engaged</span>
+      </label>
+      <div class="flex items-center gap-3">
+        <input type="range" id="ci-social_tolerance" min="1" max="5" value="3"
+               oninput="document.getElementById('ci-social_tolerance-val').textContent=this.value"
+               class="flex-1 accent-indigo-600" />
+        <span id="ci-social_tolerance-val" class="text-sm font-bold text-indigo-600 w-4 text-center">3</span>
+      </div>
+    </div>
+
+    <div>
+      <label class="text-xs font-semibold text-gray-600 flex justify-between mb-1">
+        <span>Meltdown Count <span id="vi-meltdown_count" class="hidden text-indigo-500 font-normal">🎙 voice</span></span>
+        <span class="font-normal text-gray-400">0 or more</span>
+      </label>
+      <input type="number" id="ci-meltdown_count" min="0" value="0" class="dl-input w-24" />
+    </div>
+
+    <div>
+      <label class="text-xs font-semibold text-gray-600 flex justify-between mb-1">
+        <span>Routine Adherence <span id="vi-routine_adherence" class="hidden text-indigo-500 font-normal">🎙 voice</span></span>
+        <span class="font-normal text-gray-400">1=major disruptions · 5=fully followed</span>
+      </label>
+      <div class="flex items-center gap-3">
+        <input type="range" id="ci-routine_adherence" min="1" max="5" value="3"
+               oninput="document.getElementById('ci-routine_adherence-val').textContent=this.value"
+               class="flex-1 accent-indigo-600" />
+        <span id="ci-routine_adherence-val" class="text-sm font-bold text-indigo-600 w-4 text-center">3</span>
+      </div>
+    </div>
+
+    <div>
+      <label class="text-xs font-semibold text-gray-600 flex justify-between mb-1">
+        <span>Communication <span id="vi-communication_ease" class="hidden text-indigo-500 font-normal">🎙 voice</span></span>
+        <span class="font-normal text-gray-400">1=very difficult · 5=fluent</span>
+      </label>
+      <div class="flex items-center gap-3">
+        <input type="range" id="ci-communication_ease" min="1" max="5" value="3"
+               oninput="document.getElementById('ci-communication_ease-val').textContent=this.value"
+               class="flex-1 accent-indigo-600" />
+        <span id="ci-communication_ease-val" class="text-sm font-bold text-indigo-600 w-4 text-center">3</span>
+      </div>
+    </div>
+
+    <div>
+      <label class="text-xs font-semibold text-gray-600 flex justify-between mb-1">
+        <span>Physical Activity <span id="vi-physical_activity" class="hidden text-indigo-500 font-normal">🎙 voice</span></span>
+        <span class="font-normal text-gray-400">1=none · 5=very active</span>
+      </label>
+      <div class="flex items-center gap-3">
+        <input type="range" id="ci-physical_activity" min="1" max="5" value="3"
+               oninput="document.getElementById('ci-physical_activity-val').textContent=this.value"
+               class="flex-1 accent-indigo-600" />
+        <span id="ci-physical_activity-val" class="text-sm font-bold text-indigo-600 w-4 text-center">3</span>
+      </div>
+    </div>
+
+    <div>
+      <label class="text-xs font-semibold text-gray-600 flex justify-between mb-1">
+        <span>Caregiver Day <span id="vi-caregiver_rating" class="hidden text-indigo-500 font-normal">🎙 voice</span></span>
+        <span class="font-normal text-gray-400">1=very hard · 5=great day</span>
+      </label>
+      <div class="flex items-center gap-3">
+        <input type="range" id="ci-caregiver_rating" min="1" max="5" value="3"
+               oninput="document.getElementById('ci-caregiver_rating-val').textContent=this.value"
+               class="flex-1 accent-indigo-600" />
+        <span id="ci-caregiver_rating-val" class="text-sm font-bold text-indigo-600 w-4 text-center">3</span>
+      </div>
+    </div>
+
+    <div>
+      <label class="text-xs font-semibold text-gray-600 flex items-center gap-2 mb-1">
+        Ratings Notes
+        <span id="vi-checkin_notes" class="hidden text-indigo-500 text-xs font-normal">🎙 voice</span>
+      </label>
+      <textarea id="ci-notes" rows="2" placeholder="Anything worth noting today…"
+                class="dl-input" maxlength="5000"></textarea>
+      <p class="text-right text-xs text-gray-400 mt-1">
+        <span id="ci-notes-count">0</span>/5000
+      </p>
+    </div>
+  </div>
+
+  <!-- Record & Transcribe — full-form voice fill -->
+  <div class="dl-card">
+    <button id="dl-record-btn" onclick="dlVoiceFill()"
+            class="dl-btn-secondary w-full justify-center py-3 text-sm font-semibold
+                   border-indigo-300 text-indigo-700 hover:bg-indigo-50">
+      🎙️ Record &amp; Transcribe (fill whole form)
+    </button>
+    <p id="dl-record-status" class="text-xs text-gray-400 mt-2 text-center"></p>
+  </div>
+
+  <!-- Intervention tracking -->
+  <div class="dl-card">
+    <div class="dl-section-title">🎯 Open Interventions</div>
+    <div id="intervention-list"><p class="text-xs text-gray-400">Loading…</p></div>
+  </div>
+
+  <div id="log-field-errors" class="hidden text-xs text-red-600 space-y-1"></div>
+
+  <button id="log-submit-btn" onclick="submitCombined()"
+          class="w-full py-4 bg-indigo-600 hover:bg-indigo-700 text-white font-bold
+                 rounded-2xl text-base transition flex items-center justify-center gap-2 shadow-sm">
+    Submit Log ✅
+  </button>
+  <div id="log-submit-status" class="hidden text-center text-sm pb-4"></div>
+
+</main>
+</div><!-- /panel-log -->
+
+<!-- ════════════════════════════════════════════════════════════════
+     PANEL 3 — INSIGHTS
+     ════════════════════════════════════════════════════════════════ -->
+<div id="panel-insights" class="hidden">
+<main class="max-w-3xl mx-auto px-4 py-6 space-y-6">
+
+  <div id="insights-error" class="hidden"></div>
+
+  <div class="flex items-center justify-between no-print">
+    <span id="insights-generated-at" class="text-xs text-gray-400"></span>
+    <button onclick="refreshInsights()" class="dl-btn-secondary text-xs">↻ Refresh</button>
+  </div>
+
+  <!-- Weekly summary -->
+  <div class="dl-card">
+    <div class="dl-section-title">📅 This Week at a Glance</div>
+    <div id="weekly-summary"><p class="text-xs text-gray-400">Loading…</p></div>
+  </div>
+
+  <!-- Pattern insights (top triggers, outcomes, cards, effectiveness) -->
+  <div id="insights-patterns"><p class="text-xs text-gray-400">Loading…</p></div>
+
+</main>
+</div><!-- /panel-insights -->
+
+<!-- ════════════════════════════════════════════════════════════════
+     PANEL 4 — CLINICIAN REPORT
+     ════════════════════════════════════════════════════════════════ -->
+<div id="panel-clinician" class="hidden">
+<main class="max-w-3xl mx-auto px-4 py-6">
+
+  <div id="clinician-error" class="hidden"></div>
+  <div id="clinician-loading" class="text-center py-16 text-gray-400 text-sm">Loading report…</div>
+
+  <div id="clinician-content" class="hidden space-y-6">
+    <div class="flex items-center justify-between no-print">
+      <span id="clinician-generated-at" class="text-xs text-gray-400"></span>
       <div class="flex gap-2">
-        <textarea
-          id="question"
-          name="question"
-          rows="2"
-          placeholder="What are early signs of autism in toddlers?"
-          class="flex-1 resize-none rounded-xl border border-gray-300 px-4 py-2.5 text-sm
-                 focus:outline-none focus:ring-2 focus:ring-indigo-400 focus:border-transparent
-                 placeholder-gray-400 transition"
-        ></textarea>
-        <button
-          id="ask-btn"
-          onclick="doSearch()"
-          class="self-end flex items-center gap-1.5 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50
-                 text-white text-sm font-semibold rounded-xl px-5 py-2.5 transition whitespace-nowrap"
-        >
-          <svg id="btn-icon" class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2"
-               viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round"
-                  d="M21 21l-4.35-4.35M17 11A6 6 0 1 1 5 11a6 6 0 0 1 12 0z"/>
-          </svg>
-          <span id="btn-label">Search</span>
+        <button onclick="refreshClinicianReport()" class="dl-btn-secondary text-xs">
+          ↻ Refresh report
+        </button>
+        <button id="export-btn" onclick="window.print()" class="dl-btn-secondary">
+          🖨️ Export PDF
         </button>
       </div>
-
-      <!-- Filters (collapsed by default) -->
-      <details id="filter-panel" class="mt-3">
-        <summary class="cursor-pointer text-xs font-medium text-gray-500 hover:text-gray-700
-                        select-none list-none flex items-center gap-1 w-fit">
-          <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2"
-               viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round"
-                  d="M3 4h18M7 8h10M10 12h4"/>
-          </svg>
-          Filters
-        </summary>
-        <div class="mt-3 flex flex-wrap gap-3">
-          <div>
-            <label class="block text-xs text-gray-500 mb-1">Source</label>
-            <select id="filter-source"
-                    class="text-sm border border-gray-300 rounded-lg px-3 py-1.5
-                           focus:outline-none focus:ring-2 focus:ring-indigo-400 bg-white">
-              <option value="">All sources</option>
-              <option value="reddit">Reddit</option>
-              <option value="pubmed">PubMed</option>
-              <option value="europepmc">Europe PMC</option>
-              <option value="semanticscholar">Semantic Scholar</option>
-              <option value="crossref">CrossRef</option>
-              <option value="biorxiv">bioRxiv</option>
-              <option value="doaj">DOAJ</option>
-              <option value="openalex">OpenAlex</option>
-              <option value="clinicaltrials">ClinicalTrials.gov</option>
-              <option value="core">CORE</option>
-              <option value="rss">Spectrum News / RSS</option>
-              <option value="hackernews">Hacker News</option>
-              <option value="youtube">YouTube</option>
-              <option value="newsapi">NewsAPI</option>
-              <option value="wikipedia">Wikipedia</option>
-              <option value="html_crawl">Web crawl</option>
-            </select>
-          </div>
-          <div>
-            <label class="block text-xs text-gray-500 mb-1">Time</label>
-            <select id="filter-days"
-                    class="text-sm border border-gray-300 rounded-lg px-3 py-1.5
-                           focus:outline-none focus:ring-2 focus:ring-indigo-400 bg-white">
-              <option value="">Any time</option>
-              <option value="30">Last 30 days</option>
-              <option value="90">Last 90 days</option>
-              <option value="365">Last year</option>
-            </select>
-          </div>
-          <div>
-            <label class="block text-xs text-gray-500 mb-1">Results</label>
-            <select id="filter-limit"
-                    class="text-sm border border-gray-300 rounded-lg px-3 py-1.5
-                           focus:outline-none focus:ring-2 focus:ring-indigo-400 bg-white">
-              <option value="10">Top 10</option>
-              <option value="20">Top 20</option>
-              <option value="50">Top 50</option>
-            </select>
-          </div>
-        </div>
-      </details>
     </div>
+    <div id="clinician-report-body" class="space-y-6"></div>
+  </div>
 
-    <!-- ── RESULTS AREA ───────────────────────────────────────────────────── -->
-    <div id="result">
-      <!-- Empty state -->
-      <div class="text-center text-gray-400 py-16 select-none">
-        <div class="text-5xl mb-3">🔍</div>
-        <p class="text-base font-medium">Ask a question above to get started</p>
-        <p class="text-sm mt-1">Searches across research papers, Reddit, news, and more</p>
-      </div>
-    </div>
+</main>
+</div><!-- /panel-clinician -->
 
-  </main>
-  </div><!-- /panel-search -->
+<!-- ══════════════════════════════════════════════════════════════ -->
+<script>
+// ── Constants ─────────────────────────────────────────────────────
+// Derive the host from the current page URL so no IP is hardcoded.
+// Search runs on port 3002; collect/transcribe runs on port 18002.
+// Both must be reachable at the same hostname the browser used for the UI.
+const _HOST       = window.location.protocol + '//' + window.location.hostname;
+const API_BASE    = _HOST + ':3002';
+const COLLECT_API = _HOST + ':18002';
+const CHILD_ID    = 'default';
 
-  <!-- ── DAILY LOG PANEL ──────────────────────────────────────────────────── -->
-  <div id="panel-daily-log" class="hidden">
-  <main class="max-w-3xl mx-auto px-4 py-6 space-y-4">
+// ── Source badge colours ───────────────────────────────────────────
+const SOURCE_COLORS = {
+  reddit:'bg-orange-100 text-orange-800', pubmed:'bg-blue-100 text-blue-800',
+  europepmc:'bg-blue-100 text-blue-800', semanticscholar:'bg-purple-100 text-purple-800',
+  crossref:'bg-purple-100 text-purple-800', biorxiv:'bg-pink-100 text-pink-800',
+  doaj:'bg-teal-100 text-teal-800', openalex:'bg-cyan-100 text-cyan-800',
+  clinicaltrials:'bg-red-100 text-red-800', core:'bg-indigo-100 text-indigo-800',
+  rss:'bg-green-100 text-green-800', hackernews:'bg-amber-100 text-amber-800',
+  youtube:'bg-red-100 text-red-800', newsapi:'bg-gray-100 text-gray-800',
+  html_crawl:'bg-gray-100 text-gray-800', wikipedia:'bg-slate-100 text-slate-800',
+};
+function sourceBadgeClass(s) { return SOURCE_COLORS[s] || 'bg-gray-100 text-gray-700'; }
 
-    <!-- ── Transcription banner (hidden until a result arrives) ──────────── -->
-    <div id="dl-transcript-banner" class="hidden">
-      <div class="bg-indigo-50 border border-indigo-200 rounded-xl px-4 py-3 flex items-start gap-3">
-        <span class="text-indigo-400 text-xl mt-0.5">🎙️</span>
+// ── Confidence badge config ────────────────────────────────────────
+const CONF_BADGE = {
+  strong:            { label:'Strong Pattern',   cls:'bg-green-100 text-green-800 border-green-300' },
+  possible:          { label:'Possible Pattern', cls:'bg-yellow-100 text-yellow-800 border-yellow-300' },
+  insufficient_data: { label:'Insufficient Data',cls:'bg-gray-100 text-gray-600 border-gray-300' },
+};
+function confBadgeHtml(level) {
+  const b = CONF_BADGE[level] || CONF_BADGE['insufficient_data'];
+  return `<span class="conf-badge ${b.cls}">${b.label}</span>`;
+}
+
+// ── Helpers ────────────────────────────────────────────────────────
+function fmtDate(s) {
+  if (!s) return null;
+  try { return new Date(s).toLocaleDateString('en-US',{year:'numeric',month:'short',day:'numeric'}); }
+  catch { return null; }
+}
+function scrollToSource(n) {
+  const el = document.getElementById('source-' + n);
+  if (el) el.scrollIntoView({behavior:'smooth',block:'start'});
+}
+function escHtml(str) {
+  return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+                    .replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+}
+function timeAgo(date) {
+  const s=Math.round((Date.now()-date)/1000);
+  if(s<60) return 'just now';
+  if(s<3600) return Math.floor(s/60)+' min ago';
+  if(s<86400) return Math.floor(s/3600)+' hr ago';
+  return Math.floor(s/86400)+' day(s) ago';
+}
+function linkCitations(html) {
+  return html.replace(/\[(\d+)\]/g,'<sup class="citation" onclick="scrollToSource($1)">[$1]</sup>');
+}
+function showBanner(containerId, msg, type='error') {
+  const el = document.getElementById(containerId);
+  if (!el) return;
+  const cls = type === 'error'
+    ? 'bg-red-50 border border-red-200 rounded-xl p-3 text-sm text-red-800'
+    : 'bg-green-50 border border-green-200 rounded-xl p-3 text-sm text-green-800';
+  el.innerHTML = `<div class="${cls}">${escHtml(msg)}</div>`;
+  el.classList.remove('hidden');
+}
+function showToast(msg, duration=2500) {
+  let t = document.getElementById('_toast');
+  if (!t) {
+    t = document.createElement('div');
+    t.id = '_toast';
+    t.className = 'fixed bottom-6 left-1/2 -translate-x-1/2 z-50 bg-gray-900 text-white text-sm px-5 py-2.5 rounded-full shadow-lg transition-opacity';
+    document.body.appendChild(t);
+  }
+  t.textContent = msg;
+  t.style.opacity = '1';
+  clearTimeout(t._timer);
+  t._timer = setTimeout(() => { t.style.opacity = '0'; }, duration);
+}
+
+// ── Loading button state ───────────────────────────────────────────
+let slowTimer = null;
+function setLoading(on) {
+  const btn=document.getElementById('ask-btn'), icon=document.getElementById('btn-icon'),
+        label=document.getElementById('btn-label'), qa=document.getElementById('question');
+  if (on) {
+    btn.disabled=true; qa.disabled=true;
+    icon.innerHTML=`<circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="3" fill="none"
+      stroke-dasharray="31.4" stroke-dashoffset="10" class="spin"
+      style="animation:spin .8s linear infinite;transform-origin:center"/>`;
+    label.textContent='Searching…';
+    slowTimer=setTimeout(()=>{label.textContent='Still searching…';},3000);
+  } else {
+    clearTimeout(slowTimer); btn.disabled=false; qa.disabled=false;
+    icon.innerHTML=`<path stroke-linecap="round" stroke-linejoin="round"
+      d="M21 21l-4.35-4.35M17 11A6 6 0 1 1 5 11a6 6 0 0 1 12 0z"/>`;
+    label.textContent='Search';
+  }
+}
+
+// ── Build source card ──────────────────────────────────────────────
+function buildSourceCard(r, rank) {
+  const badgeCls = sourceBadgeClass(r.source);
+  const sourceLabel = r.source.charAt(0).toUpperCase()+r.source.slice(1);
+  let authorLine='';
+  if (r.authors_json&&r.authors_json.length>0) {
+    const first=r.authors_json[0]; const name=first.family||first.name||'';
+    authorLine=name?(r.authors_json.length>1?name+' et al.':name):'';
+  } else if (r.author) { authorLine=r.author; }
+  const date=fmtDate(r.published_at)||fmtDate(r.collected_at)||'';
+  const href=r.full_text_url||r.url||'#';
+  const snippet=r.description
+    ? r.description.slice(0,280)+(r.description.length>280?'…':'')
+    : (r.content_body?r.content_body.slice(0,280)+'…':'');
+  const scoreW=Math.round((r.combined_score||0)*100);
+  return `
+    <div id="source-${rank}" class="bg-white rounded-xl border border-gray-200 p-4 scroll-mt-20 hover:border-indigo-300 transition">
+      <div class="flex items-start gap-3">
+        <span class="flex-none mt-0.5 w-7 h-7 rounded-full bg-indigo-50 text-indigo-700 text-xs font-bold flex items-center justify-center border border-indigo-200">${rank}</span>
         <div class="flex-1 min-w-0">
-          <p class="text-xs font-semibold text-indigo-500 mb-1">Transcription</p>
-          <p id="dl-transcript-text" class="text-sm text-gray-800 leading-relaxed break-words"></p>
-        </div>
-        <button onclick="document.getElementById('dl-transcript-banner').classList.add('hidden')"
-                class="text-gray-400 hover:text-gray-600 text-xl leading-none flex-none">×</button>
-      </div>
-    </div>
-
-    <!-- ── Server transcribe button ───────────────��──────────────────────── -->
-    <div class="dl-card flex items-center gap-4">
-      <button id="dl-record-btn" onclick="dlServerTranscribe()"
-              class="dl-btn-secondary gap-2 py-2.5 px-4 text-sm font-semibold">
-        🎙️ Record &amp; Transcribe
-      </button>
-      <p id="dl-record-status" class="text-xs text-gray-400">Tap to record voice — transcribed by server</p>
-    </div>
-
-    <!-- Date banner -->
-    <div class="text-center text-gray-500 text-sm py-1 font-medium" id="dl-date-banner"></div>
-
-    <!-- ── 1. Mood ─────────────────────────────────────────────────────── -->
-    <div class="dl-card">
-      <div class="dl-section-title">😊 How was today?</div>
-      <div class="flex gap-2 justify-center">
-        <button class="dl-emoji-btn" data-group="mood" data-value="happy"   onclick="dlSelect('mood','happy',this)">😊</button>
-        <button class="dl-emoji-btn" data-group="mood" data-value="neutral" onclick="dlSelect('mood','neutral',this)">😐</button>
-        <button class="dl-emoji-btn" data-group="mood" data-value="upset"   onclick="dlSelect('mood','upset',this)">😣</button>
-        <button class="dl-emoji-btn" data-group="mood" data-value="angry"   onclick="dlSelect('mood','angry',this)">😡</button>
-      </div>
-    </div>
-
-    <!-- ── 2. Food ─────────────────────────────────────────────────────── -->
-    <div class="dl-card">
-      <div class="dl-section-title">🍽️ Food</div>
-      <p class="text-xs text-gray-500 mb-3">How would you like to log food?</p>
-      <div class="flex gap-2 flex-wrap">
-        <button class="dl-btn-secondary" onclick="document.getElementById('food-photo-input').click()">📷 Take Photo</button>
-        <button class="dl-btn-secondary" id="food-voice-btn" onclick="dlVoice('food-voice-btn','food-transcript','foodText')">🎤 Voice Input</button>
-      </div>
-      <input type="file" id="food-photo-input" accept="image/*" capture="environment" class="hidden"
-             onchange="dlPhotoPreview(this,'food-thumb','food-preview-area','foodPhoto')" />
-      <div id="food-preview-area" class="hidden mt-3 flex flex-col gap-2">
-        <img id="food-thumb" class="dl-photo-thumb hidden" />
-        <div id="food-transcript" class="dl-transcript hidden"></div>
-      </div>
-    </div>
-
-    <!-- ── 3. Sleep ────────────────────────────────────────────────────── -->
-    <div class="dl-card">
-      <div class="dl-section-title">😴 Sleep</div>
-      <p class="text-xs text-gray-500 mb-3">How was sleep?</p>
-      <div class="flex gap-2 justify-center mb-3">
-        <button class="dl-emoji-btn" data-group="sleep" data-value="good" onclick="dlSelect('sleep','good',this)">😴 <span class="text-xs font-semibold">Good</span></button>
-        <button class="dl-emoji-btn" data-group="sleep" data-value="ok"   onclick="dlSelect('sleep','ok',this)">😐 <span class="text-xs font-semibold">OK</span></button>
-        <button class="dl-emoji-btn" data-group="sleep" data-value="bad"  onclick="dlSelect('sleep','bad',this)">😫 <span class="text-xs font-semibold">Bad</span></button>
-      </div>
-      <details>
-        <summary class="text-xs text-gray-500 cursor-pointer hover:text-gray-700 select-none w-fit">▸ Show details (bedtime, wake-ups…)</summary>
-        <div class="mt-3 grid grid-cols-3 gap-3">
-          <label class="flex flex-col gap-1">
-            <span class="text-xs text-gray-500">Bedtime</span>
-            <input type="time" id="dl-bed-time" value="21:30" class="dl-input" />
-          </label>
-          <label class="flex flex-col gap-1">
-            <span class="text-xs text-gray-500">Wake time</span>
-            <input type="time" id="dl-wake-time" value="06:45" class="dl-input" />
-          </label>
-          <label class="flex flex-col gap-1">
-            <span class="text-xs text-gray-500">Wake-ups</span>
-            <input type="number" id="dl-wake-ups" value="0" min="0" max="20" class="dl-input" />
-          </label>
-        </div>
-      </details>
-    </div>
-
-    <!-- ── 4. Medication ──────────────────────────────────────────────── -->
-    <div class="dl-card">
-      <div class="dl-section-title">💊 Medication / Supplement</div>
-      <p class="text-xs text-gray-500 mb-3">Was medication taken?</p>
-      <div class="flex gap-3">
-        <button class="dl-toggle-btn" id="med-taken-btn"  onclick="dlMed(true)">✅ Taken</button>
-        <button class="dl-toggle-btn" id="med-missed-btn" onclick="dlMed(false)">❌ Missed</button>
-      </div>
-    </div>
-
-    <!-- ── 5. Therapy ─────────────────────────────────────────────────── -->
-    <div class="dl-card">
-      <div class="dl-section-title">🧠 Therapy</div>
-      <p class="text-xs text-gray-500 mb-3">Did therapy happen today?</p>
-      <div class="grid grid-cols-2 gap-2 mb-4">
-        <label class="dl-checkbox-label"><input type="checkbox" class="therapy-cb" value="ABA" /> ABA</label>
-        <label class="dl-checkbox-label"><input type="checkbox" class="therapy-cb" value="Speech" /> Speech</label>
-        <label class="dl-checkbox-label"><input type="checkbox" class="therapy-cb" value="OT" /> OT</label>
-        <label class="dl-checkbox-label"><input type="checkbox" class="therapy-cb" value="School Support" /> School Support</label>
-      </div>
-      <p class="text-xs text-gray-500 mb-2">How did it go?</p>
-      <div class="flex gap-2 justify-center">
-        <button class="dl-emoji-btn" data-group="therapy-mood" data-value="happy"   onclick="dlSelect('therapyMood','happy',this)">😊</button>
-        <button class="dl-emoji-btn" data-group="therapy-mood" data-value="neutral" onclick="dlSelect('therapyMood','neutral',this)">😐</button>
-        <button class="dl-emoji-btn" data-group="therapy-mood" data-value="upset"   onclick="dlSelect('therapyMood','upset',this)">😣</button>
-      </div>
-    </div>
-
-    <!-- ── 6. Special Event ───────────────────────────────────────────── -->
-    <div class="dl-card">
-      <div class="dl-section-title">⚡ Special Event</div>
-      <p class="text-xs text-gray-500 mb-3">Is there a special event (meltdown, outburst…) to report?</p>
-      <div class="flex gap-3">
-        <button class="dl-toggle-btn" id="event-no-btn"  onclick="dlEvent(false)">No 👍</button>
-        <button class="dl-toggle-btn" id="event-yes-btn" onclick="dlEvent(true)">Yes ⚠️</button>
-      </div>
-
-      <!-- Event details (revealed when Yes) -->
-      <div id="event-details" class="hidden mt-4 space-y-4">
-        <div>
-          <p class="text-xs font-semibold text-gray-600 mb-2">What caused it?</p>
-          <div class="grid grid-cols-2 gap-2">
-            <label class="dl-checkbox-label"><input type="checkbox" class="cause-cb" value="Noise" /> 🔊 Noise</label>
-            <label class="dl-checkbox-label"><input type="checkbox" class="cause-cb" value="Change in routine" /> 🔄 Change in routine</label>
-            <label class="dl-checkbox-label"><input type="checkbox" class="cause-cb" value="Social stress" /> 👥 Social stress</label>
-            <label class="dl-checkbox-label"><input type="checkbox" class="cause-cb" value="Hunger" /> 🍽️ Hunger</label>
-            <label class="dl-checkbox-label"><input type="checkbox" class="cause-cb" value="Unknown" /> ❓ Unknown</label>
+          <div class="flex flex-wrap items-start gap-2 mb-1">
+            <span class="inline-flex items-center text-xs font-semibold px-2 py-0.5 rounded-full ${badgeCls}">${sourceLabel}</span>
+            ${r.open_access?`<span class="inline-flex items-center text-xs font-medium text-teal-700 bg-teal-50 border border-teal-200 rounded-full px-2 py-0.5">🔓 open access</span>`:''}
+            ${r.doi?`<span class="text-xs text-gray-400 font-mono truncate max-w-xs">DOI: ${r.doi}</span>`:''}
           </div>
-        </div>
-        <div>
-          <p class="text-xs font-semibold text-gray-600 mb-2">Add more details:</p>
-          <div class="flex gap-2 flex-wrap">
-            <button class="dl-btn-secondary" id="event-voice-btn" onclick="dlVoice('event-voice-btn','event-transcript','eventNotes')">🎤 Voice</button>
-            <button class="dl-btn-secondary" onclick="dlToggleText('event-text-area')">✍️ Text</button>
-          </div>
-          <textarea id="event-text-area" class="dl-input hidden mt-2" rows="3"
-                    placeholder="Describe what happened…"></textarea>
-          <div id="event-transcript" class="dl-transcript hidden"></div>
-        </div>
-      </div>
-    </div>
-
-    <!-- ── 7. Additional Notes ────────────────────────────────────────── -->
-    <div class="dl-card">
-      <div class="dl-section-title">📝 Additional Notes</div>
-      <p class="text-xs text-gray-500 mb-3">Anything else to add?</p>
-      <div class="flex gap-2 flex-wrap">
-        <button class="dl-btn-secondary" id="extra-voice-btn" onclick="dlVoice('extra-voice-btn','extra-transcript','extraNotes')">🎤 Voice</button>
-        <button class="dl-btn-secondary" onclick="document.getElementById('extra-photo-input').click()">📷 Photo</button>
-        <button class="dl-btn-secondary" onclick="dlToggleText('extra-text-area')">✍️ Text</button>
-      </div>
-      <input type="file" id="extra-photo-input" accept="image/*" capture="environment" class="hidden"
-             onchange="dlPhotoPreview(this,'extra-thumb','extra-preview-area','extraPhoto')" />
-      <div id="extra-preview-area" class="hidden mt-3 flex flex-col gap-2">
-        <img id="extra-thumb" class="dl-photo-thumb hidden" />
-        <div id="extra-transcript" class="dl-transcript hidden"></div>
-      </div>
-      <textarea id="extra-text-area" class="dl-input hidden mt-2" rows="3"
-                placeholder="Anything else…"></textarea>
-    </div>
-
-    <!-- ── Submit ─────────────────────────────────────────────────────── -->
-    <button id="dl-submit-btn" onclick="dlSubmit()"
-            class="w-full py-4 bg-indigo-600 hover:bg-indigo-700 text-white font-bold
-                   rounded-2xl text-base transition flex items-center justify-center gap-2 shadow-sm">
-      Submit ✅
-    </button>
-    <div id="dl-submit-status" class="hidden text-center text-sm pb-4"></div>
-
-  </main>
-  </div><!-- /panel-daily-log -->
-
-  <!-- ── SCRIPTS ─────────────────────────────────────────────────────────── -->
-  <script>
-    // ── Search API base URL ────────────────────────────────────────────────
-    const API_BASE = '';
-
-    // ── Source badge colours ───────────────────────────────────────────────
-    const SOURCE_COLORS = {
-      reddit:          'bg-orange-100 text-orange-800',
-      pubmed:          'bg-blue-100 text-blue-800',
-      europepmc:       'bg-blue-100 text-blue-800',
-      semanticscholar: 'bg-purple-100 text-purple-800',
-      crossref:        'bg-purple-100 text-purple-800',
-      biorxiv:         'bg-pink-100 text-pink-800',
-      doaj:            'bg-teal-100 text-teal-800',
-      openalex:        'bg-cyan-100 text-cyan-800',
-      clinicaltrials:  'bg-red-100 text-red-800',
-      core:            'bg-indigo-100 text-indigo-800',
-      rss:             'bg-green-100 text-green-800',
-      hackernews:      'bg-amber-100 text-amber-800',
-      youtube:         'bg-red-100 text-red-800',
-      newsapi:         'bg-gray-100 text-gray-800',
-      html_crawl:      'bg-gray-100 text-gray-800',
-      wikipedia:       'bg-slate-100 text-slate-800',
-    };
-
-    function sourceBadgeClass(source) {
-      return SOURCE_COLORS[source] || 'bg-gray-100 text-gray-700';
-    }
-
-    // ── Date formatter ─────────────────────────────────────────────────────
-    function fmtDate(isoStr) {
-      if (!isoStr) return null;
-      try {
-        return new Date(isoStr).toLocaleDateString('en-US',
-          { year: 'numeric', month: 'short', day: 'numeric' });
-      } catch { return null; }
-    }
-
-    // ── Scroll to source card ──────────────────────────────────────────────
-    function scrollToSource(n) {
-      const el = document.getElementById('source-' + n);
-      if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
-    }
-
-    // ── Escape HTML (XSS safe) ─────────────────────────────────────────────
-    function escHtml(str) {
-      return String(str)
-        .replace(/&/g, '&amp;')
-        .replace(/</g, '&lt;')
-        .replace(/>/g, '&gt;')
-        .replace(/"/g, '&quot;')
-        .replace(/'/g, '&#39;');
-    }
-
-    // ── Render citation markers → clickable superscripts ──────────────────
-    function linkCitations(html) {
-      return html.replace(/\[(\d+)\]/g,
-        '<sup class="citation" onclick="scrollToSource($1)">[$1]</sup>');
-    }
-
-    // ── Loading state (button + textarea only) ─────────────────────────────
-    let slowTimer = null;
-
-    function setLoading(on) {
-      const btn   = document.getElementById('ask-btn');
-      const icon  = document.getElementById('btn-icon');
-      const label = document.getElementById('btn-label');
-      const qa    = document.getElementById('question');
-
-      if (on) {
-        btn.disabled = true;
-        qa.disabled  = true;
-        icon.innerHTML = `<circle cx="12" cy="12" r="10" stroke="currentColor"
-          stroke-width="3" fill="none" stroke-dasharray="31.4" stroke-dashoffset="10"
-          class="spin" style="animation:spin 0.8s linear infinite;transform-origin:center"/>`;
-        label.textContent = 'Searching…';
-        slowTimer = setTimeout(() => { label.textContent = 'Still searching…'; }, 3000);
-      } else {
-        clearTimeout(slowTimer);
-        btn.disabled = false;
-        qa.disabled  = false;
-        icon.innerHTML = `<path stroke-linecap="round" stroke-linejoin="round"
-          d="M21 21l-4.35-4.35M17 11A6 6 0 1 1 5 11a6 6 0 0 1 12 0z"/>`;
-        label.textContent = 'Search';
-      }
-    }
-
-    // ── Build source card HTML ─────────────────────────────────────────────
-    function buildSourceCard(r, rank) {
-      const badgeCls = sourceBadgeClass(r.source);
-      const sourceLabel = r.source.charAt(0).toUpperCase() + r.source.slice(1);
-
-      let authorLine = '';
-      if (r.authors_json && r.authors_json.length > 0) {
-        const first = r.authors_json[0];
-        const name  = first.family || first.name || '';
-        authorLine  = name ? (r.authors_json.length > 1 ? name + ' et al.' : name) : '';
-      } else if (r.author) {
-        authorLine = r.author;
-      }
-
-      const date    = fmtDate(r.published_at) || fmtDate(r.collected_at) || '';
-      const href    = r.full_text_url || r.url || '#';
-      const snippet = r.description
-        ? r.description.slice(0, 280) + (r.description.length > 280 ? '…' : '')
-        : (r.content_body ? r.content_body.slice(0, 280) + '…' : '');
-      const scoreW  = Math.round((r.combined_score || 0) * 100);
-
-      return `
-        <div id="source-${rank}"
-             class="bg-white rounded-xl border border-gray-200 p-4 scroll-mt-20 hover:border-indigo-300 transition">
-          <div class="flex items-start gap-3">
-            <span class="flex-none mt-0.5 w-7 h-7 rounded-full bg-indigo-50 text-indigo-700
-                         text-xs font-bold flex items-center justify-center border border-indigo-200">
-              ${rank}
-            </span>
-            <div class="flex-1 min-w-0">
-              <div class="flex flex-wrap items-start gap-2 mb-1">
-                <span class="inline-flex items-center text-xs font-semibold px-2 py-0.5 rounded-full ${badgeCls}">
-                  ${sourceLabel}
-                </span>
-                ${r.open_access ? `<span class="inline-flex items-center text-xs font-medium text-teal-700 bg-teal-50 border border-teal-200 rounded-full px-2 py-0.5">🔓 open access</span>` : ''}
-                ${r.doi ? `<span class="text-xs text-gray-400 font-mono truncate max-w-xs">DOI: ${r.doi}</span>` : ''}
-              </div>
-              <a href="${href}" target="_blank" rel="noopener noreferrer"
-                 class="text-sm font-semibold text-gray-900 hover:text-indigo-700 leading-snug
-                        line-clamp-2 block mb-1 transition">
-                ${escHtml(r.title || '(untitled)')}
-                <svg class="inline w-3 h-3 mb-0.5 ml-0.5 opacity-40" fill="none"
-                     stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round"
-                        d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6M15 3h6v6M10 14L21 3"/>
-                </svg>
-              </a>
-              <div class="text-xs text-gray-500 flex flex-wrap gap-x-2 gap-y-0.5 mb-2">
-                ${authorLine ? `<span>${escHtml(authorLine)}</span>` : ''}
-                ${r.journal ? `<span>· ${escHtml(r.journal)}</span>` : ''}
-                ${date ? `<span>· ${date}</span>` : ''}
-              </div>
-              ${snippet ? `<p class="text-xs text-gray-600 leading-relaxed">${escHtml(snippet)}</p>` : ''}
-              <div class="mt-3 flex items-center gap-2">
-                <div class="score-bar-bg flex-1">
-                  <div class="score-bar-fill" style="width:${scoreW}%"></div>
-                </div>
-                <span class="text-xs text-gray-400 tabular-nums w-8 text-right">
-                  ${(r.combined_score || 0).toFixed(2)}
-                </span>
-              </div>
-            </div>
-          </div>
-        </div>`;
-    }
-
-    // ══════════════════════════════════════════════════════════════════════
-    // STREAMING UI — progressive rendering helpers
-    // ══════════════════════════════════════════════════════════════════════
-
-    // ── Set up the skeleton divs that streaming fills progressively ────────
-    function resetUI() {
-      document.getElementById('result').innerHTML = `
-        <!-- Stage progress bar -->
-        <div id="stream-progress" class="hidden mb-5 bg-white rounded-2xl border border-gray-200 shadow-sm p-4">
-          <div id="stage-spinner-row" class="flex items-center gap-3 text-sm text-gray-600 mb-3">
-            <svg class="w-4 h-4 flex-none spin" fill="none" stroke="currentColor" stroke-width="2"
-                 viewBox="0 0 24 24" style="animation:spin 0.8s linear infinite;transform-origin:center">
-              <circle cx="12" cy="12" r="10" stroke-dasharray="31.4" stroke-dashoffset="10"/>
+          <a href="${href}" target="_blank" rel="noopener noreferrer"
+             class="text-sm font-semibold text-gray-900 hover:text-indigo-700 leading-snug line-clamp-2 block mb-1 transition">
+            ${escHtml(r.title||'(untitled)')}
+            <svg class="inline w-3 h-3 mb-0.5 ml-0.5 opacity-40" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6M15 3h6v6M10 14L21 3"/>
             </svg>
-            <span id="stage-label" class="font-medium">Searching…</span>
-            <span id="stage-elapsed" class="text-gray-400 text-xs ml-auto"></span>
+          </a>
+          <div class="text-xs text-gray-500 flex flex-wrap gap-x-2 gap-y-0.5 mb-2">
+            ${authorLine?`<span>${escHtml(authorLine)}</span>`:''}
+            ${r.journal?`<span>· ${escHtml(r.journal)}</span>`:''}
+            ${date?`<span>· ${date}</span>`:''}
           </div>
-          <!-- Stage dots -->
-          <div class="flex items-center gap-1.5 flex-wrap text-xs">
-            <span data-stage="embedding" class="px-2 py-0.5 rounded text-gray-400">Embedding</span>
-            <span class="text-gray-300">→</span>
-            <span data-stage="semantic"  class="px-2 py-0.5 rounded text-gray-400">Semantic</span>
-            <span class="text-gray-300">→</span>
-            <span data-stage="keyword"   class="px-2 py-0.5 rounded text-gray-400">Keyword</span>
-            <span class="text-gray-300">→</span>
-            <span data-stage="merge"     class="px-2 py-0.5 rounded text-gray-400">Merge</span>
-            <span class="text-gray-300">→</span>
-            <span data-stage="agent"     class="px-2 py-0.5 rounded text-gray-400">Agent</span>
-          </div>
-          <!-- Live agent activity log -->
-          <div id="agent-log"
-               class="hidden mt-3 text-xs text-gray-500 space-y-1 border-l-2 border-indigo-200 pl-3">
+          ${snippet?`<p class="text-xs text-gray-600 leading-relaxed">${escHtml(snippet)}</p>`:''}
+          <div class="mt-3 flex items-center gap-2">
+            <div class="score-bar-bg flex-1"><div class="score-bar-fill" style="width:${scoreW}%"></div></div>
+            <span class="text-xs text-gray-400 tabular-nums w-8 text-right">${(r.combined_score||0).toFixed(2)}</span>
           </div>
         </div>
+      </div>
+    </div>`;
+}
 
-        <!-- Answer block: populated by renderAnswerBlock on the summary event -->
-        <div id="answer-section" class="hidden mb-6"></div>
+// ══════════════════════════════════════════════════════════════════
+// SEARCH — streaming UI helpers
+// ══════════════════════════════════════════════════════════════════
 
-        <!-- Source cards: populated by renderSourceCards on the results event -->
-        <div id="sources-section" class="hidden"></div>
+function resetUI() {
+  document.getElementById('result').innerHTML = `
+    <div id="stream-progress" class="hidden mb-5 bg-white rounded-2xl border border-gray-200 shadow-sm p-4">
+      <div id="stage-spinner-row" class="flex items-center gap-3 text-sm text-gray-600 mb-3">
+        <svg class="w-4 h-4 flex-none spin" fill="none" stroke="currentColor" stroke-width="2"
+             viewBox="0 0 24 24" style="animation:spin .8s linear infinite;transform-origin:center">
+          <circle cx="12" cy="12" r="10" stroke-dasharray="31.4" stroke-dashoffset="10"/>
+        </svg>
+        <span id="stage-label" class="font-medium">Searching…</span>
+        <span id="stage-elapsed" class="text-gray-400 text-xs ml-auto"></span>
+      </div>
+      <div class="flex items-center gap-1.5 flex-wrap text-xs">
+        <span data-stage="embedding" class="px-2 py-0.5 rounded text-gray-400">Embedding</span>
+        <span class="text-gray-300">→</span>
+        <span data-stage="semantic"  class="px-2 py-0.5 rounded text-gray-400">Semantic</span>
+        <span class="text-gray-300">→</span>
+        <span data-stage="keyword"   class="px-2 py-0.5 rounded text-gray-400">Keyword</span>
+        <span class="text-gray-300">→</span>
+        <span data-stage="merge"     class="px-2 py-0.5 rounded text-gray-400">Merge</span>
+        <span class="text-gray-300">→</span>
+        <span data-stage="agent"     class="px-2 py-0.5 rounded text-gray-400">Agent</span>
+      </div>
+      <div id="agent-log" class="hidden mt-3 text-xs text-gray-500 space-y-1 border-l-2 border-indigo-200 pl-3"></div>
+    </div>
 
-        <!-- Timing footer: populated by updateTimingBadge on the done event -->
-        <div id="timing-footer" class="hidden mt-6 text-xs text-gray-400 flex flex-wrap gap-x-3 gap-y-1 justify-end"></div>
-      `;
-    }
+    <div id="safety-banner" class="hidden mb-4 bg-red-50 border-l-4 border-red-500 rounded-xl p-4">
+      <p class="text-sm font-bold text-red-800">⚠ This situation may need professional attention.</p>
+      <p class="text-sm text-red-700 mt-1">Consider contacting your child's care team or calling 988.</p>
+    </div>
 
-    // ── Show / hide the progress panel ────────────────────────────────────
-    function showProgress() {
-      const p = document.getElementById('stream-progress');
-      if (p) p.classList.remove('hidden');
-    }
-
-    function hideProgress() {
-      // Collapse the spinner row but keep the agent log visible
-      const row = document.getElementById('stage-spinner-row');
-      if (row) row.classList.add('hidden');
-    }
-
-    // ── Advance stage dots ─────────────────────────────────────────────────
-    function updateStageUI(stage, message, elapsedMs) {
-      const label   = document.getElementById('stage-label');
-      const elapsed = document.getElementById('stage-elapsed');
-      if (label)   label.textContent   = message;
-      if (elapsed) elapsed.textContent = elapsedMs ? `${elapsedMs}ms` : '';
-
-      const order = ['embedding', 'semantic', 'keyword', 'merge', 'agent'];
-      const idx   = order.indexOf(stage);
-
-      order.forEach((s, i) => {
-        const el = document.querySelector(`[data-stage="${s}"]`);
-        if (!el) return;
-        // Reset classes then apply state
-        el.className = 'px-2 py-0.5 rounded text-xs ';
-        if (i < idx) {
-          el.classList.add('text-green-600', 'font-medium');  // done
-        } else if (i === idx) {
-          el.classList.add('text-indigo-600', 'font-semibold', 'bg-indigo-50');  // active
-        } else {
-          el.classList.add('text-gray-400');  // pending
-        }
-      });
-    }
-
-    // ── Append a line to the live agent log ───────────────────────────────
-    function appendAgentLog(message) {
-      const log = document.getElementById('agent-log');
-      if (!log) return;
-      log.classList.remove('hidden');
-      const row = document.createElement('div');
-      row.className = 'flex items-start gap-1.5';
-      row.innerHTML = `
-        <span class="text-indigo-400 flex-none mt-0.5">›</span>
-        <span>${escHtml(message)}</span>`;
-      log.appendChild(row);
-      log.scrollTop = log.scrollHeight;
-    }
-
-    // ── Render source cards (called on `results` SSE event) ───────────────
-    function renderSourceCards(results, searchMode, searchTimeMs) {
-      const section = document.getElementById('sources-section');
-      if (!section) return;
-
-      if (!results || results.length === 0) {
-        // No results — show message in answer-section
-        const ans = document.getElementById('answer-section');
-        if (ans) {
-          ans.innerHTML = `
-            <div class="rounded-xl bg-gray-50 border border-gray-200 p-5 text-center text-gray-500">
-              <p class="font-medium">No results found</p>
-              <p class="text-sm mt-1">Try rephrasing your question or removing filters.</p>
-            </div>`;
-          ans.classList.remove('hidden');
-        }
-        return;
-      }
-
-      let html = `
+    <div id="answer-section" class="mb-6">
+      <div id="answer-card" class="hidden bg-white rounded-2xl border border-indigo-200 shadow-sm p-5 mb-4">
         <div class="flex items-center gap-2 mb-3">
-          <span class="text-gray-600 font-semibold text-sm uppercase tracking-wide">Sources</span>
-          <span class="h-px flex-1 bg-gray-200"></span>
-          <span class="text-xs text-gray-400">${results.length} result${results.length !== 1 ? 's' : ''}</span>
+          <span class="text-indigo-600 font-semibold text-sm uppercase tracking-wide">Answer</span>
+          <span class="h-px flex-1 bg-indigo-100"></span>
         </div>
-        <div class="flex flex-col gap-3">`;
+        <div id="answer-text" class="text-sm text-gray-800 leading-relaxed"></div>
+        <div id="confidence-badge" class="hidden mt-3"></div>
+        <div id="personal-section" class="hidden mt-4 pt-4 border-t border-gray-100"></div>
+      </div>
+      <div id="sources-section" class="hidden"></div>
+    </div>
 
-      results.forEach((r, i) => { html += buildSourceCard(r, i + 1); });
-      html += '</div>';
+    <div id="timing-footer" class="hidden mt-6 text-xs text-gray-400 flex flex-wrap gap-x-3 gap-y-1 justify-end"></div>`;
+}
 
-      section.innerHTML = html;
-      section.classList.remove('hidden');
+function showProgress() {
+  const p=document.getElementById('stream-progress'); if(p) p.classList.remove('hidden');
+}
+function hideProgress() {
+  const r=document.getElementById('stage-spinner-row'); if(r) r.classList.add('hidden');
+}
+function updateStageUI(stage, message, elapsedMs) {
+  const label=document.getElementById('stage-label'), elapsed=document.getElementById('stage-elapsed');
+  if(label) label.textContent=message;
+  if(elapsed) elapsed.textContent=elapsedMs?`${elapsedMs}ms`:'';
+  const order=['embedding','semantic','keyword','merge','agent'];
+  const idx=order.indexOf(stage);
+  order.forEach((s,i)=>{
+    const el=document.querySelector(`[data-stage="${s}"]`); if(!el) return;
+    el.className='px-2 py-0.5 rounded text-xs ';
+    if(i<idx) el.classList.add('text-green-600','font-medium');
+    else if(i===idx) el.classList.add('text-indigo-600','font-semibold','bg-indigo-50');
+    else el.classList.add('text-gray-400');
+  });
+}
+function appendAgentLog(message) {
+  const log=document.getElementById('agent-log'); if(!log) return;
+  log.classList.remove('hidden');
+  const row=document.createElement('div'); row.className='flex items-start gap-1.5';
+  row.innerHTML=`<span class="text-indigo-400 flex-none mt-0.5">›</span><span>${escHtml(message)}</span>`;
+  log.appendChild(row); log.scrollTop=log.scrollHeight;
+}
+
+function renderSourceCards(results) {
+  const section=document.getElementById('sources-section'); if(!section) return;
+  if(!results||results.length===0) return;
+  let html=`
+    <div class="flex items-center gap-2 mb-3">
+      <span class="text-gray-600 font-semibold text-sm uppercase tracking-wide">Sources</span>
+      <span class="h-px flex-1 bg-gray-200"></span>
+      <span class="text-xs text-gray-400">${results.length} result${results.length!==1?'s':''}</span>
+    </div>
+    <div class="flex flex-col gap-3">`;
+  results.forEach((r,i)=>{ html+=buildSourceCard(r,i+1); });
+  html+='</div>';
+  section.innerHTML=html; section.classList.remove('hidden');
+}
+
+function renderAnswerBlock(text, opts={}) {
+  const { confidence_level, personal_insight, safety_flag } = opts;
+  const safety=document.getElementById('safety-banner');
+  const card=document.getElementById('answer-card');
+  const answerText=document.getElementById('answer-text');
+  const confBadge=document.getElementById('confidence-badge');
+  const personalSection=document.getElementById('personal-section');
+  if(!card) return;
+
+  if(safety_flag && safety) safety.classList.remove('hidden');
+
+  if(!text) {
+    answerText.innerHTML=`<div class="text-amber-800 text-sm"><span class="font-semibold">Summary unavailable</span> — search results are shown below.</div>`;
+  } else {
+    const rendered=DOMPurify.sanitize(marked.parse(text));
+    answerText.innerHTML=linkCitations(rendered);
+  }
+
+  if(confidence_level && confBadge) {
+    confBadge.innerHTML=confBadgeHtml(confidence_level);
+    confBadge.classList.remove('hidden');
+  }
+  if(personal_insight && personalSection) {
+    personalSection.innerHTML=`
+      <div class="bg-indigo-50 rounded-xl border border-indigo-100 p-3">
+        <p class="text-xs font-semibold text-indigo-600 mb-1">Based on your logs:</p>
+        <p class="text-sm text-gray-700">${escHtml(personal_insight)}</p>
+      </div>`;
+    personalSection.classList.remove('hidden');
+  }
+  card.classList.remove('hidden');
+}
+
+function updateTimingBadge({search_time_ms, llm_time_ms, search_mode, agent_iterations}) {
+  const footer=document.getElementById('timing-footer'); if(!footer) return;
+  const searchSec=search_time_ms!=null?(search_time_ms/1000).toFixed(2):'?';
+  const llmLabel=llm_time_ms!=null?` · answer ${(llm_time_ms/1000).toFixed(1)}s`:'';
+  const modeLabel=search_mode||'search';
+  const agentLabel=agent_iterations!=null?` · agent ×${agent_iterations}`:'';
+  footer.innerHTML=`
+    <span class="font-medium ${modeLabel==='hybrid'?'text-indigo-400':'text-gray-400'}">${modeLabel}</span>
+    <span>search ${searchSec}s${llmLabel}${agentLabel}</span>
+    <span>· Powered by autism-search + Claude</span>`;
+  footer.classList.remove('hidden');
+}
+
+// ── Fallback blocking fetch ────────────────────────────────────────
+function renderResults(data) {
+  const {results,total,search_mode,search_time_ms,summary,llm_time_ms}=data;
+  resetUI();
+  if(summary) {
+    renderAnswerBlock(summary);
+  } else if(total===0) {
+    const card=document.getElementById('answer-card');
+    if(card) { card.innerHTML=`<div class="text-center text-gray-500 p-4"><p class="font-medium">No results found</p><p class="text-sm mt-1">Try rephrasing your question or removing filters.</p></div>`; card.classList.remove('hidden'); }
+  } else {
+    renderAnswerBlock(null);
+  }
+  if(results&&results.length>0) renderSourceCards(results);
+  updateTimingBadge({search_time_ms,llm_time_ms,search_mode});
+}
+
+async function fallbackFetch(question, source, days, limit) {
+  const params=new URLSearchParams({q:question,limit});
+  if(source) params.set('source',source);
+  if(days) params.set('days',days);
+  try {
+    const resp=await fetch(API_BASE+'/api/search?'+params.toString());
+    if(!resp.ok) {
+      let msg=`Search failed (HTTP ${resp.status})`;
+      try { const j=await resp.json(); msg=j.detail||j.error||msg; } catch {}
+      document.getElementById('result').innerHTML=`<div class="rounded-xl bg-red-50 border border-red-200 p-4 text-red-800 text-sm"><span class="font-semibold">Error:</span> ${escHtml(msg)}</div>`;
+      return;
     }
+    renderResults(await resp.json());
+  } catch(err) {
+    document.getElementById('result').innerHTML=`<div class="rounded-xl bg-red-50 border border-red-200 p-4 text-red-800 text-sm"><span class="font-semibold">Network error:</span> Could not reach the search service.</div>`;
+  }
+}
 
-    // ── Render the answer block (called on `summary` SSE event) ───────────
-    function renderAnswerBlock(text) {
-      const section = document.getElementById('answer-section');
-      if (!section) return;
-
-      if (!text) {
-        section.innerHTML = `
-          <div class="rounded-xl bg-amber-50 border border-amber-200 p-4 text-amber-800 text-sm">
-            <span class="font-semibold">Summary unavailable</span> — search results are shown below.
-          </div>`;
-      } else {
-        const rendered = DOMPurify.sanitize(marked.parse(text));
-        const linked   = linkCitations(rendered);
-        section.innerHTML = `
-          <div class="bg-white rounded-2xl border border-indigo-200 shadow-sm p-5">
-            <div class="flex items-center gap-2 mb-3">
-              <span class="text-indigo-600 font-semibold text-sm uppercase tracking-wide">Answer</span>
-              <span class="h-px flex-1 bg-indigo-100"></span>
-            </div>
-            <div id="answer-text" class="text-sm text-gray-800 leading-relaxed prose">
-              ${linked}
-            </div>
-          </div>`;
-      }
-      section.classList.remove('hidden');
+// ── Main search (EventSource) ──────────────────────────────────────
+async function doSearch() {
+  const question=document.getElementById('question').value.trim();
+  if(!question) { document.getElementById('question').focus(); return; }
+  const source=document.getElementById('filter-source').value;
+  const days=document.getElementById('filter-days').value;
+  const limit=document.getElementById('filter-limit').value;
+  setLoading(true); resetUI();
+  if(typeof EventSource==='undefined') {
+    await fallbackFetch(question,source,days,limit); setLoading(false); return;
+  }
+  const params=new URLSearchParams({q:question,limit});
+  if(source) params.set('source',source);
+  if(days) params.set('days',days);
+  showProgress();
+  const es=new EventSource(`${API_BASE}/api/search/stream?${params}`);
+  let streamGotResults=false, lastSearchTimeMs=null, lastSearchMode=null;
+  es.addEventListener('stage',(e)=>{ const d=JSON.parse(e.data); updateStageUI(d.stage,d.message,d.elapsed_ms); });
+  es.addEventListener('results',(e)=>{
+    const d=JSON.parse(e.data); streamGotResults=true;
+    lastSearchTimeMs=d.search_time_ms; lastSearchMode=d.search_mode;
+    renderSourceCards(d.results);
+  });
+  es.addEventListener('agent_activity',(e)=>{ appendAgentLog(JSON.parse(e.data).message); });
+  es.addEventListener('summary',(e)=>{
+    const d=JSON.parse(e.data);
+    renderAnswerBlock(d.text,{
+      confidence_level: d.confidence_level,
+      personal_insight: d.personal_insight,
+      safety_flag:      d.safety_flag,
+    });
+  });
+  es.addEventListener('done',(e)=>{
+    const d=JSON.parse(e.data); hideProgress();
+    updateTimingBadge({search_time_ms:lastSearchTimeMs,llm_time_ms:d.llm_time_ms,
+                       search_mode:lastSearchMode,agent_iterations:d.agent_iterations});
+    setLoading(false); es.close();
+  });
+  es.addEventListener('error',()=>{
+    es.close();
+    if(!streamGotResults) { fallbackFetch(question,source,days,limit).finally(()=>setLoading(false)); }
+    else {
+      hideProgress(); setLoading(false);
+      const ans=document.getElementById('answer-card');
+      if(ans&&ans.classList.contains('hidden')) renderAnswerBlock(null);
     }
+  });
+}
 
-    // ── Update timing footer (called on `done` SSE event) ─────────────────
-    function updateTimingBadge({ search_time_ms, llm_time_ms, search_mode, agent_iterations }) {
-      const footer = document.getElementById('timing-footer');
-      if (!footer) return;
+document.getElementById('question').addEventListener('keydown',function(e){
+  if((e.metaKey||e.ctrlKey)&&e.key==='Enter'){ e.preventDefault(); doSearch(); }
+});
+document.getElementById('question').addEventListener('input',function(){
+  document.getElementById('ask-btn').disabled=this.value.trim()==='';
+});
+document.getElementById('ask-btn').disabled=true;
 
-      const searchSec  = search_time_ms != null ? (search_time_ms / 1000).toFixed(2) : '?';
-      const llmLabel   = llm_time_ms != null ? ` · answer ${(llm_time_ms / 1000).toFixed(1)}s` : '';
-      const modeLabel  = search_mode || 'search';
-      const agentLabel = agent_iterations != null ? ` · agent ×${agent_iterations}` : '';
+// ════════════════════════════════════════════════════════════════
+// TAB SWITCHING
+// ════════════════════════════════════════════════════════════════
+const ALL_TABS=['search','log','insights','clinician'];
 
-      footer.innerHTML = `
-        <span class="font-medium ${modeLabel === 'hybrid' ? 'text-indigo-400' : 'text-gray-400'}">
-          ${modeLabel}
-        </span>
-        <span>search ${searchSec}s${llmLabel}${agentLabel}</span>
-        <span>· Powered by autism-search + Claude</span>`;
-      footer.classList.remove('hidden');
+function switchTab(name) {
+  ALL_TABS.forEach(t=>{
+    document.getElementById('panel-'+t).classList.toggle('hidden',t!==name);
+    const btn=document.getElementById('tab-btn-'+t);
+    if(t===name){ btn.classList.remove('tab-btn-inactive'); btn.classList.add('tab-btn-active'); }
+    else { btn.classList.remove('tab-btn-active'); btn.classList.add('tab-btn-inactive'); }
+  });
+  localStorage.setItem('active_tab',name);
+  if(name==='log')             loadInterventions();
+  else if(name==='insights')   loadInsights();
+  else if(name==='clinician')  loadClinicianReport();
+}
+
+// ════════════════════════════════════════════════════════════════
+// TAB 2 — LOG TODAY
+// ════════════════════════════════════════════════════════════════
+// Voice state machine: IDLE | RECORDING | SENDING | MAPPED | ERROR
+let voiceState    = 'IDLE';
+let voiceLogId    = null;   // logs row id from transcribe-and-log response
+let voiceLoggedAt = null;   // logged_at timestamp echoed back; used in PUT body
+let voiceLogDate  = null;   // log_date (YYYY-MM-DD) for daily-checks POST
+
+const selectedTriggers = new Set();
+const selectedTags     = new Set();
+
+const TRIGGER_OPTIONS = ['noise','transitions','sleep','food','social','screens','routine-change','other'];
+const TAG_OPTIONS     = ['public_place','sensory','home','school','evening','morning','after-therapy'];
+
+function buildTagPills(containerId, options, selectedSet) {
+  const el=document.getElementById(containerId); if(!el) return;
+  el.innerHTML='';
+  options.forEach(v=>{
+    const btn=document.createElement('button');
+    btn.type='button'; btn.textContent=v; btn.dataset.value=v;
+    btn.className='tag-pill'+(selectedSet.has(v)?' active':'');
+    btn.onclick=()=>{
+      if(selectedSet.has(v)){ selectedSet.delete(v); btn.classList.remove('active'); }
+      else { selectedSet.add(v); btn.classList.add('active'); }
+    };
+    el.appendChild(btn);
+  });
+}
+
+async function loadInterventions() {
+  const container=document.getElementById('intervention-list');
+  container.innerHTML='<p class="text-xs text-gray-400">Loading…</p>';
+  try {
+    const resp=await fetch(COLLECT_API+'/api/v1/interventions?status=open');
+    if(!resp.ok) throw new Error('HTTP '+resp.status);
+    const data=await resp.json();
+    const items=data.items||[];
+    if(items.length===0){
+      container.innerHTML='<p class="text-xs text-gray-500">No open interventions.</p>'; return;
     }
-
-    // ══════════════════════════════════════════════════════════════════════
-    // FALLBACK — one-shot blocking fetch (used when EventSource unavailable
-    // or when the stream errors before any results arrive)
-    // ══════════════════════════════════════════════════════════════════════
-
-    function renderResults(data) {
-      const { results, total, search_mode, search_time_ms, summary, llm_time_ms } = data;
-      let html = '';
-
-      if (summary) {
-        const rendered = DOMPurify.sanitize(marked.parse(summary));
-        const linked   = linkCitations(rendered);
-        html += `
-          <div class="bg-white rounded-2xl border border-indigo-200 shadow-sm p-5 mb-6">
-            <div class="flex items-center gap-2 mb-3">
-              <span class="text-indigo-600 font-semibold text-sm uppercase tracking-wide">Answer</span>
-              <span class="h-px flex-1 bg-indigo-100"></span>
-            </div>
-            <div id="answer-text" class="text-sm text-gray-800 leading-relaxed prose">
-              ${linked}
-            </div>
-          </div>`;
-      } else if (total === 0) {
-        html += `
-          <div class="rounded-xl bg-gray-50 border border-gray-200 p-5 mb-6 text-center text-gray-500">
-            <p class="font-medium">No results found</p>
-            <p class="text-sm mt-1">Try rephrasing your question or removing filters.</p>
-          </div>`;
-      } else {
-        html += `
-          <div class="rounded-xl bg-amber-50 border border-amber-200 p-4 mb-6 text-amber-800 text-sm">
-            <span class="font-semibold">Summary unavailable</span> — search results are shown below.
-          </div>`;
-      }
-
-      if (results && results.length > 0) {
-        html += `
-          <div class="flex items-center gap-2 mb-3">
-            <span class="text-gray-600 font-semibold text-sm uppercase tracking-wide">Sources</span>
-            <span class="h-px flex-1 bg-gray-200"></span>
-            <span class="text-xs text-gray-400">${total} result${total !== 1 ? 's' : ''}</span>
+    container.innerHTML='';
+    items.forEach(item=>{
+      const div=document.createElement('div');
+      div.id='irow-'+item.id;
+      div.className='intervention-row mb-3';
+      div.innerHTML=`
+        <div class="flex items-start justify-between gap-2">
+          <div class="min-w-0">
+            <p class="text-sm font-semibold text-gray-800">${escHtml(item.title||'')}</p>
+            ${item.description?`<p class="text-xs text-gray-500 mt-0.5">${escHtml(item.description)}</p>`:''}
+            <p class="text-xs text-gray-400 mt-1">${fmtDate(item.created_at)||''} · ${escHtml(item.suggested_by||'')}</p>
           </div>
-          <div class="flex flex-col gap-3">`;
-        results.forEach((r, i) => { html += buildSourceCard(r, i + 1); });
-        html += '</div>';
-      }
-
-      const searchSec = (search_time_ms / 1000).toFixed(2);
-      const llmLabel  = llm_time_ms != null ? ` · answer ${(llm_time_ms / 1000).toFixed(1)}s` : '';
-      html += `
-        <div class="mt-6 text-xs text-gray-400 flex flex-wrap gap-x-3 gap-y-1 justify-end">
-          <span class="font-medium ${search_mode === 'hybrid' ? 'text-indigo-400' : 'text-gray-400'}">
-            ${search_mode}
-          </span>
-          <span>search ${searchSec}s${llmLabel}</span>
-          <span>· Powered by autism-search + Claude</span>
+          <button onclick="toggleOutcomeForm('${item.id}')"
+                  class="dl-btn-secondary flex-none text-xs">Mark outcome</button>
+        </div>
+        <div id="oform-${item.id}" class="hidden mt-3 pt-3 border-t border-gray-100 space-y-3">
+          <div>
+            <label class="text-xs font-semibold text-gray-600 block mb-1">Outcome <span class="text-red-500">*</span></label>
+            <div class="flex gap-2">
+              ${['helped','no_change','worsened'].map(v=>`
+                <label class="flex items-center gap-1.5 text-xs cursor-pointer">
+                  <input type="radio" name="ostatus-${item.id}" value="${v}" class="accent-indigo-600" />
+                  ${v.replace('_',' ')}
+                </label>`).join('')}
+            </div>
+            <p id="ostatus-err-${item.id}" class="hidden text-xs text-red-500 mt-1"></p>
+          </div>
+          <div>
+            <label class="text-xs font-semibold text-gray-600 block mb-1">Note (optional)</label>
+            <input type="text" id="onote-${item.id}" placeholder="Brief note…" class="dl-input" />
+          </div>
+          <div>
+            <label class="text-xs font-semibold text-gray-600 block mb-1">Resolved at</label>
+            <input type="datetime-local" id="oresolved-${item.id}" class="dl-input" />
+          </div>
+          <div id="oform-err-${item.id}" class="hidden text-xs text-red-600"></div>
+          <button onclick="submitOutcomeForm('${item.id}')"
+                  class="dl-btn-secondary text-xs">Submit outcome</button>
         </div>`;
-
-      document.getElementById('result').innerHTML = html;
-    }
-
-    async function fallbackFetch(question, source, days, limit) {
-      const params = new URLSearchParams({ q: question, limit });
-      if (source) params.set('source', source);
-      if (days)   params.set('days', days);
-
-      try {
-        const resp = await fetch(API_BASE + '/api/search?' + params.toString());
-        if (!resp.ok) {
-          let msg = `Search failed (HTTP ${resp.status})`;
-          try { const j = await resp.json(); msg = j.detail || j.error || msg; } catch {}
-          document.getElementById('result').innerHTML = `
-            <div class="rounded-xl bg-red-50 border border-red-200 p-4 text-red-800 text-sm">
-              <span class="font-semibold">Error:</span> ${escHtml(msg)}
-            </div>`;
-          return;
-        }
-        const data = await resp.json();
-        renderResults(data);
-      } catch (err) {
-        document.getElementById('result').innerHTML = `
-          <div class="rounded-xl bg-red-50 border border-red-200 p-4 text-red-800 text-sm">
-            <span class="font-semibold">Network error:</span> Could not reach the search service.
-          </div>`;
-      }
-    }
-
-    // ══════════════════════════════════════════════════════════════════════
-    // MAIN SEARCH — EventSource first, fallbackFetch if unavailable/error
-    // ══════════════════════════════════════════════════════════════════════
-
-    async function doSearch() {
-      const question = document.getElementById('question').value.trim();
-      if (!question) {
-        document.getElementById('question').focus();
-        return;
-      }
-
-      const source = document.getElementById('filter-source').value;
-      const days   = document.getElementById('filter-days').value;
-      const limit  = document.getElementById('filter-limit').value;
-
-      setLoading(true);
-      resetUI();
-
-      // ── No EventSource support → blocking fetch ────────────────────────
-      if (typeof EventSource === 'undefined') {
-        await fallbackFetch(question, source, days, limit);
-        setLoading(false);
-        return;
-      }
-
-      // ── Build URL (conditional params — never pass null/undefined) ──────
-      const params = new URLSearchParams({ q: question, limit });
-      if (source) params.set('source', source);
-      if (days)   params.set('days', days);
-
-      showProgress();
-
-      const streamUrl = `${API_BASE}/api/search/stream?${params}`;
-      const es = new EventSource(streamUrl);
-
-      let streamGotResults = false;
-      let lastSearchTimeMs = null;
-      let lastSearchMode   = null;
-
-      // ── stage: advance progress dots ───────────────────────────────────
-      es.addEventListener('stage', (e) => {
-        const d = JSON.parse(e.data);
-        updateStageUI(d.stage, d.message, d.elapsed_ms);
-      });
-
-      // ── results: render source cards immediately (before LLM finishes) ─
-      es.addEventListener('results', (e) => {
-        const d = JSON.parse(e.data);
-        streamGotResults = true;
-        lastSearchTimeMs = d.search_time_ms;
-        lastSearchMode   = d.search_mode;
-        renderSourceCards(d.results, d.search_mode, d.search_time_ms);
-      });
-
-      // ── agent_activity: append to live log ────────────────────────────
-      es.addEventListener('agent_activity', (e) => {
-        const d = JSON.parse(e.data);
-        appendAgentLog(d.message);
-      });
-
-      // ── summary: render answer block ───────────────────────────────────
-      es.addEventListener('summary', (e) => {
-        const d = JSON.parse(e.data);
-        renderAnswerBlock(d.text);
-      });
-
-      // ── done: timing footer, hide spinner, close stream ────────────────
-      es.addEventListener('done', (e) => {
-        const d = JSON.parse(e.data);
-        hideProgress();
-        updateTimingBadge({
-          search_time_ms:   lastSearchTimeMs,
-          llm_time_ms:      d.llm_time_ms,
-          search_mode:      lastSearchMode,
-          agent_iterations: d.agent_iterations,
-        });
-        setLoading(false);
-        es.close();
-      });
-
-      // ── error: fall back to blocking fetch if stream never delivered results
-      es.addEventListener('error', (e) => {
-        es.close();
-        if (!streamGotResults) {
-          // Stream never delivered results — fall back to blocking fetch
-          fallbackFetch(question, source, days, limit).finally(() => setLoading(false));
-        } else {
-          // Partial stream — hide spinner, keep whatever was already rendered
-          hideProgress();
-          setLoading(false);
-          // Show amber notice if no answer block arrived yet
-          const ans = document.getElementById('answer-section');
-          if (ans && ans.classList.contains('hidden')) {
-            renderAnswerBlock(null);
-          }
-        }
-      });
-    }
-
-    // ── Keyboard shortcut: Cmd/Ctrl+Enter ─────────────────────────────────
-    document.getElementById('question').addEventListener('keydown', function(e) {
-      if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') {
-        e.preventDefault();
-        doSearch();
-      }
+      container.appendChild(div);
+      // Set default resolved_at to now
+      const dti=document.getElementById('oresolved-'+item.id);
+      if(dti){ const n=new Date(); n.setMinutes(n.getMinutes()-n.getTimezoneOffset());
+               dti.value=n.toISOString().slice(0,16); }
     });
+  } catch(err) {
+    container.innerHTML=`<p class="text-xs text-red-600">Could not load interventions: ${escHtml(err.message)}</p>`;
+  }
+}
 
-    // Disable Ask button when textarea is empty
-    document.getElementById('question').addEventListener('input', function() {
-      document.getElementById('ask-btn').disabled = this.value.trim() === '';
+function toggleOutcomeForm(id) {
+  const f=document.getElementById('oform-'+id); if(f) f.classList.toggle('hidden');
+}
+
+async function submitOutcomeForm(id) {
+  const statusEl=document.getElementById('ostatus-err-'+id);
+  const errEl=document.getElementById('oform-err-'+id);
+  statusEl.classList.add('hidden'); errEl.classList.add('hidden');
+
+  const statusInput=document.querySelector(`input[name="ostatus-${id}"]:checked`);
+  if(!statusInput){ statusEl.textContent='Please select an outcome.'; statusEl.classList.remove('hidden'); return; }
+
+  const note=document.getElementById('onote-'+id).value||null;
+  const resolvedAt=document.getElementById('oresolved-'+id).value;
+  const body={ outcome_status:statusInput.value, outcome_note:note,
+               resolved_at:resolvedAt?new Date(resolvedAt).toISOString():new Date().toISOString() };
+  try {
+    const resp=await fetch(COLLECT_API+'/api/v1/interventions/'+id+'/outcome',
+      {method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
+    if(!resp.ok){
+      let msg='HTTP '+resp.status;
+      try { const j=await resp.json(); msg=j.detail||msg; } catch {}
+      throw new Error(msg);
+    }
+    const row=document.getElementById('irow-'+id); if(row) row.remove();
+    showToast('Outcome recorded ✓');
+    const list=document.getElementById('intervention-list');
+    if(list&&!list.querySelector('.intervention-row'))
+      list.innerHTML='<p class="text-xs text-gray-500">No open interventions.</p>';
+  } catch(err) {
+    errEl.textContent='Error: '+err.message; errEl.classList.remove('hidden');
+  }
+}
+
+// ── Rating keys (Daily Ratings card) ─────────────────────────────
+const RATING_KEYS = ['sleep_quality','mood','sensory_sensitivity','appetite',
+                     'social_tolerance','meltdown_count','routine_adherence',
+                     'communication_ease','physical_activity','caregiver_rating'];
+
+// Collect rating values from #ci-* inputs.
+// Returns { ratings: {key: int, …}, hasRatings: bool }
+function collectRatings() {
+  const defaults = { meltdown_count: 0 }; // number input default
+  const ratings = {};
+  let touched = false;
+  RATING_KEYS.forEach(k => {
+    const el = document.getElementById('ci-' + k);
+    if (!el) return;
+    const v = Number(el.value);
+    const def = defaults[k] !== undefined ? defaults[k] : 3;
+    if (!isNaN(v)) {
+      ratings[k] = v;
+      if (v !== def) touched = true;
+    }
+  });
+  const notes = (document.getElementById('ci-notes').value || '').trim();
+  return { ratings, hasRatings: touched, notes: notes || null };
+}
+
+// Reset all rating sliders to default
+function resetRatings() {
+  RATING_KEYS.forEach(k => {
+    const el = document.getElementById('ci-' + k);
+    if (!el) return;
+    const def = k === 'meltdown_count' ? 0 : 3;
+    el.value = def;
+    const val = document.getElementById('ci-' + k + '-val');
+    if (val) val.textContent = def;
+  });
+  document.getElementById('ci-notes').value = '';
+  document.getElementById('ci-notes-count').textContent = '0';
+}
+
+// Reset voice indicator badges on all voice-filled fields
+function clearVoiceIndicators() {
+  document.querySelectorAll('[id^="vi-"]').forEach(el => el.classList.add('hidden'));
+}
+
+// Reset entire Log Today form to IDLE state
+function resetLogForm() {
+  document.getElementById('log-event').value = '';
+  document.getElementById('log-context').value = '';
+  document.getElementById('log-response').value = '';
+  document.getElementById('log-outcome').value = '';
+  document.getElementById('log-notes').value = '';
+  document.getElementById('log-severity').value = '3';
+  document.getElementById('log-severity-val').textContent = '3';
+  selectedTriggers.clear(); selectedTags.clear();
+  buildTagPills('log-trigger-tags', TRIGGER_OPTIONS, selectedTriggers);
+  buildTagPills('log-tags', TAG_OPTIONS, selectedTags);
+  resetRatings();
+  clearVoiceIndicators();
+  // Clear voice state
+  voiceState = 'IDLE';
+  voiceLogId = null; voiceLoggedAt = null; voiceLogDate = null;
+  // Hide voice banner
+  document.getElementById('voice-banner').classList.add('hidden');
+  // Reset submit button label
+  const btn = document.getElementById('log-submit-btn');
+  if (btn) btn.innerHTML = 'Submit Log ✅';
+}
+
+// ── Combined submit (manual POST or voice PUT) ─────────────────────
+async function submitCombined() {
+  const btn = document.getElementById('log-submit-btn');
+  const statusEl = document.getElementById('log-submit-status');
+
+  // Client-side validation: event + severity required in manual path;
+  // in MAPPED path they may already be null if only ratings were captured.
+  const isVoiceMapped = voiceState === 'MAPPED';
+  let valid = true;
+  const eventVal = document.getElementById('log-event').value.trim();
+  const eventErr = document.getElementById('log-event-err');
+  if (!isVoiceMapped && !eventVal) {
+    eventErr.textContent = 'Event description is required.';
+    eventErr.classList.remove('hidden'); valid = false;
+  } else eventErr.classList.add('hidden');
+
+  const severityVal = parseInt(document.getElementById('log-severity').value);
+  const sevErr = document.getElementById('log-severity-err');
+  if (!isVoiceMapped && (isNaN(severityVal) || severityVal < 1 || severityVal > 5)) {
+    sevErr.textContent = 'Severity must be between 1 and 5.';
+    sevErr.classList.remove('hidden'); valid = false;
+  } else sevErr.classList.add('hidden');
+
+  const ciNotes = document.getElementById('ci-notes').value;
+  if (ciNotes.length > 5000) {
+    showToast('Ratings notes must be 5000 chars or fewer.'); return;
+  }
+  if (!valid) return;
+
+  btn.disabled = true;
+  statusEl.textContent = 'Saving…';
+  statusEl.className = 'text-gray-500 text-sm text-center mt-1';
+  statusEl.classList.remove('hidden');
+
+  const { ratings, hasRatings, notes: ciNotesVal } = collectRatings();
+  const logDate = voiceLogDate || new Date().toISOString().slice(0, 10);
+
+  try {
+    // ── Event log request ─────────────────────────────────────────
+    if (isVoiceMapped && voiceLogId) {
+      // PUT to update the auto-saved voice entry
+      const body = {
+        child_id:  CHILD_ID,
+        logged_at: voiceLoggedAt || new Date().toISOString(),
+        event:     eventVal || null,
+        triggers:  [...selectedTriggers],
+        context:   document.getElementById('log-context').value || null,
+        response:  document.getElementById('log-response').value || null,
+        outcome:   document.getElementById('log-outcome').value || null,
+        severity:  isNaN(severityVal) ? null : severityVal,
+        tags:      [...selectedTags],
+        notes:     document.getElementById('log-notes').value || null,
+      };
+      const resp = await fetch(COLLECT_API + '/api/v1/logs/' + voiceLogId,
+        { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+      if (!resp.ok) {
+        const j = await resp.json().catch(() => ({}));
+        throw new Error(j.detail || 'HTTP ' + resp.status);
+      }
+    } else if (eventVal) {
+      // POST new event log entry (manual path)
+      const body = {
+        child_id:  CHILD_ID,
+        logged_at: new Date().toISOString(),
+        event:     eventVal,
+        triggers:  [...selectedTriggers],
+        context:   document.getElementById('log-context').value || null,
+        response:  document.getElementById('log-response').value || null,
+        outcome:   document.getElementById('log-outcome').value || null,
+        severity:  severityVal,
+        tags:      [...selectedTags],
+        notes:     document.getElementById('log-notes').value || null,
+      };
+      const resp = await fetch(COLLECT_API + '/api/v1/logs',
+        { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+      if (resp.status === 422) {
+        const j = await resp.json();
+        const detail = Array.isArray(j.detail) ? j.detail.map(e => e.msg).join(', ') : j.detail || 'Validation error';
+        statusEl.textContent = '⚠ ' + detail;
+        statusEl.className = 'text-red-600 text-sm text-center mt-1';
+        btn.disabled = false; return;
+      }
+      if (!resp.ok) throw new Error('HTTP ' + resp.status);
+    }
+
+    // ── Daily check-in request (separate, optional) ────────────────
+    if (hasRatings || ciNotesVal) {
+      const ciBody = {
+        check_date: logDate,
+        ratings:    hasRatings ? ratings : {},
+        notes:      ciNotesVal,
+      };
+      const ciResp = await fetch(COLLECT_API + '/daily-checks',
+        { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(ciBody) });
+      if (ciResp.status === 422) {
+        const j = await ciResp.json();
+        const detail = Array.isArray(j.detail) ? j.detail.map(e => e.msg).join(', ') : j.detail || 'Validation error';
+        statusEl.textContent = '⚠ Ratings: ' + detail;
+        statusEl.className = 'text-red-600 text-sm text-center mt-1';
+        btn.disabled = false; return;
+      }
+      if (!ciResp.ok) throw new Error('Daily check-in HTTP ' + ciResp.status);
+    }
+
+    // ── Success ────────────────────────────────────────────────────
+    resetLogForm();
+    showToast('Saved ✓');
+    statusEl.classList.add('hidden');
+  } catch (err) {
+    statusEl.textContent = '❌ ' + err.message;
+    statusEl.className = 'text-red-600 text-sm text-center mt-1';
+  } finally { btn.disabled = false; }
+}
+
+// ── Voice fill (whole-form) state machine ──────────────────────────
+let mediaRecorder = null, audioChunks = [];
+
+async function dlVoiceFill() {
+  const btn    = document.getElementById('dl-record-btn');
+  const status = document.getElementById('dl-record-status');
+
+  // RECORDING → stop and send
+  if (mediaRecorder && mediaRecorder.state === 'recording') {
+    mediaRecorder.stop(); return;
+  }
+
+  // IDLE or ERROR → start recording
+  let stream;
+  try { stream = await navigator.mediaDevices.getUserMedia({ audio: true }); }
+  catch (err) {
+    status.textContent = '⚠️ Mic access denied: ' + err.message;
+    voiceState = 'ERROR'; return;
+  }
+
+  voiceState = 'RECORDING';
+  audioChunks = [];
+  mediaRecorder = new MediaRecorder(stream);
+  mediaRecorder.ondataavailable = e => { if (e.data.size > 0) audioChunks.push(e.data); };
+
+  mediaRecorder.onstop = async () => {
+    stream.getTracks().forEach(t => t.stop());
+    voiceState = 'SENDING';
+    btn.textContent = '🎙️ Record & Transcribe (fill whole form)';
+    btn.classList.remove('recording');
+    btn.disabled = true;
+    status.textContent = '⏳ Sending to collect service…';
+
+    const blob = new Blob(audioChunks, { type: 'audio/webm' });
+    const fd = new FormData();
+    fd.append('audio', blob, 'recording.webm');
+    fd.append('child_id', CHILD_ID);
+
+    try {
+      const res = await fetch(COLLECT_API + '/transcribe-and-log', { method: 'POST', body: fd });
+      if (!res.ok) {
+        const e = await res.json().catch(() => ({}));
+        throw new Error(e.detail || 'HTTP ' + res.status);
+      }
+      const data = await res.json();
+
+      // Store voice metadata
+      voiceState    = 'MAPPED';
+      voiceLogId    = data.log_id    || null;
+      voiceLoggedAt = data.logged_at || null;
+      voiceLogDate  = data.log_date  || null;
+
+      // Pre-fill form from mapped fields
+      applyVoiceMapped(data.mapped || {});
+
+      // Show voice banner
+      const banner = document.getElementById('voice-banner');
+      document.getElementById('voice-banner-text').textContent =
+        'Auto-saved. Review and click "Update Log" to submit changes, or leave as-is.';
+      document.getElementById('voice-transcript').textContent =
+        'Heard: ' + (data.transcription || '(nothing detected)');
+      banner.classList.remove('hidden');
+
+      // Change submit button label to "Update Log"
+      const submitBtn = document.getElementById('log-submit-btn');
+      if (submitBtn) submitBtn.innerHTML = 'Update Log ✅';
+
+      status.textContent = '✅ Mapped (confidence: ' + (data.mapping_confidence || '?') + ')';
+    } catch (err) {
+      voiceState = 'ERROR';
+      status.textContent = '❌ Failed: ' + err.message;
+      showToast('Voice fill failed — type instead.');
+    } finally {
+      btn.disabled = false;
+    }
+  };
+
+  mediaRecorder.start();
+  btn.textContent = '⏹ Stop & Send';
+  btn.classList.add('recording');
+  status.textContent = '🔴 Recording… tap again to stop and send';
+}
+
+// Apply voice-mapped fields to form elements
+function applyVoiceMapped(m) {
+  function setVi(key) {
+    const badge = document.getElementById('vi-' + key);
+    if (badge) badge.classList.remove('hidden');
+  }
+
+  // Event log fields
+  if (m.event != null) {
+    document.getElementById('log-event').value = m.event; setVi('event');
+  }
+  if (m.triggers && m.triggers.length > 0) {
+    m.triggers.forEach(v => { if (TRIGGER_OPTIONS.includes(v)) selectedTriggers.add(v); });
+    buildTagPills('log-trigger-tags', TRIGGER_OPTIONS, selectedTriggers); setVi('triggers');
+  }
+  if (m.context != null) { document.getElementById('log-context').value = m.context; setVi('context'); }
+  if (m.response != null) { document.getElementById('log-response').value = m.response; setVi('response'); }
+  if (m.outcome != null) { document.getElementById('log-outcome').value = m.outcome; setVi('outcome'); }
+  if (m.severity != null) {
+    document.getElementById('log-severity').value = m.severity;
+    document.getElementById('log-severity-val').textContent = m.severity; setVi('severity');
+  }
+  if (m.tags && m.tags.length > 0) {
+    m.tags.forEach(v => { if (TAG_OPTIONS.includes(v)) selectedTags.add(v); });
+    buildTagPills('log-tags', TAG_OPTIONS, selectedTags); setVi('tags');
+  }
+  if (m.notes != null) { document.getElementById('log-notes').value = m.notes; setVi('notes'); }
+
+  // Daily rating fields
+  const ratingMap = {
+    sleep_quality: 'sleep_quality', mood: 'mood',
+    sensory_sensitivity: 'sensory_sensitivity', appetite: 'appetite',
+    social_tolerance: 'social_tolerance', meltdown_count: 'meltdown_count',
+    routine_adherence: 'routine_adherence', communication_ease: 'communication_ease',
+    physical_activity: 'physical_activity', caregiver_rating: 'caregiver_rating',
+  };
+  Object.entries(ratingMap).forEach(([mKey, ciKey]) => {
+    if (m[mKey] != null) {
+      const el = document.getElementById('ci-' + ciKey);
+      if (el) {
+        el.value = m[mKey];
+        const valEl = document.getElementById('ci-' + ciKey + '-val');
+        if (valEl) valEl.textContent = m[mKey];
+        setVi(ciKey);
+      }
+    }
+  });
+  if (m.checkin_notes != null) {
+    document.getElementById('ci-notes').value = m.checkin_notes;
+    document.getElementById('ci-notes-count').textContent = m.checkin_notes.length;
+    setVi('checkin_notes');
+  }
+}
+
+// ════════════════════════════════════════════════════════════════
+// TAB 3 — INSIGHTS
+// ════════════════════════════════════════════════════════════════
+async function loadInsights(refresh=false) {
+  document.getElementById('weekly-summary').innerHTML='<p class="text-xs text-gray-400">Loading…</p>';
+  document.getElementById('insights-patterns').innerHTML='<p class="text-xs text-gray-400">Loading…</p>';
+  document.getElementById('insights-error').classList.add('hidden');
+
+  const insightsUrl=API_BASE+'/api/insights'+(refresh?'?refresh=true':'');
+  const [weeklyResp, insightsResp] = await Promise.allSettled([
+    fetch(API_BASE+'/api/weekly-summary?child_id='+CHILD_ID+'&week_offset=0'),
+    fetch(insightsUrl),
+  ]);
+
+  // Weekly summary
+  if(weeklyResp.status==='fulfilled'&&weeklyResp.value.ok){
+    try { renderWeeklySummary(await weeklyResp.value.json()); }
+    catch { document.getElementById('weekly-summary').innerHTML='<p class="text-xs text-gray-500">Could not display weekly summary.</p>'; }
+  } else {
+    document.getElementById('weekly-summary').innerHTML='<p class="text-xs text-gray-500">Not enough data yet — keep logging daily.</p>';
+  }
+
+  // Pattern insights
+  if(insightsResp.status==='fulfilled'&&insightsResp.value.ok){
+    try {
+      const data=await insightsResp.value.json();
+      renderPatternInsights(data);
+      const metaEl=document.getElementById('insights-generated-at');
+      if(metaEl&&data.generated_at){
+        const ago=timeAgo(new Date(data.generated_at));
+        metaEl.textContent=(data.cached?'Cached · ':'')+'Generated '+ago;
+      }
+    }
+    catch { document.getElementById('insights-patterns').innerHTML='<p class="text-xs text-gray-500">Could not display insights.</p>'; }
+  } else {
+    document.getElementById('insights-patterns').innerHTML='<p class="text-xs text-gray-500">Not enough data yet — keep logging daily.</p>';
+  }
+}
+
+function refreshInsights() {
+  loadInsights(true);
+}
+
+function renderWeeklySummary(data) {
+  const el=document.getElementById('weekly-summary');
+  if(!data||(!data.event_count&&!data.summary_text)){
+    el.innerHTML='<p class="text-xs text-gray-500">Not enough data yet — keep logging daily.</p>'; return;
+  }
+  const trendCls={ improving:'bg-green-100 text-green-800', stable:'bg-gray-100 text-gray-600', worsening:'bg-red-100 text-red-800' };
+  const cls=trendCls[data.trend_direction]||trendCls.stable;
+  const triggers=(data.top_triggers||[]).map(t=>`<li>${escHtml(t)}</li>`).join('');
+  const helped=(data.what_helped||[]).map(t=>`<li>${escHtml(t)}</li>`).join('');
+  el.innerHTML=`
+    <div class="space-y-3">
+      <div class="flex flex-wrap gap-4 text-sm">
+        <span class="text-gray-500">${escHtml(data.period_start||'')} – ${escHtml(data.period_end||'')}</span>
+        <span class="font-semibold text-gray-800">${data.event_count||0} events</span>
+        <span class="font-semibold text-gray-800">${data.meltdown_count||0} meltdowns</span>
+        ${data.trend_direction?`<span class="px-2 py-0.5 rounded-full text-xs font-semibold ${cls}">${escHtml(data.trend_direction)}</span>`:''}
+      </div>
+      ${triggers?`<div><p class="text-xs font-semibold text-gray-600 mb-1">Top triggers</p><ul class="text-xs text-gray-700 list-disc list-inside space-y-0.5">${triggers}</ul></div>`:''}
+      ${helped?`<div><p class="text-xs font-semibold text-gray-600 mb-1">What helped</p><ul class="text-xs text-gray-700 list-disc list-inside space-y-0.5">${helped}</ul></div>`:''}
+      ${data.summary_text?`<p class="text-sm text-gray-700 leading-relaxed">${escHtml(data.summary_text)}</p>`:''}
+    </div>`;
+}
+
+function renderPatternInsights(data) {
+  const container=document.getElementById('insights-patterns');
+  const topTriggers=data.top_triggers||[];
+  const topOutcomes=data.top_outcomes||[];
+  const patterns=data.pattern_cards||[];
+  const effectiveness=data.intervention_effectiveness||[];
+
+  const triggerRows=topTriggers.length
+    ? topTriggers.map((t,i)=>`<div class="flex items-center gap-2 text-sm py-1"><span class="text-gray-400 tabular-nums w-4">${i+1}</span><span class="flex-1 text-gray-700">${escHtml(typeof t==='string'?t:t.trigger||'')}</span>${t.count!==undefined?`<span class="text-xs text-gray-400">${t.count}×</span>`:''}</div>`).join('')
+    : '<p class="text-xs text-gray-500">No data yet.</p>';
+
+  const outcomeRows=topOutcomes.length
+    ? topOutcomes.map((o,i)=>`<div class="flex items-center gap-2 text-sm py-1"><span class="text-gray-400 tabular-nums w-4">${i+1}</span><span class="flex-1 text-gray-700">${escHtml(typeof o==='string'?o:o.outcome||'')}</span></div>`).join('')
+    : '<p class="text-xs text-gray-500">No data yet.</p>';
+
+  const patternCards=patterns.map(p=>`
+    <div class="dl-card">
+      <div class="flex items-start justify-between gap-3">
+        <div>
+          <p class="text-sm font-semibold text-gray-800">${escHtml(p.trigger||'')} → ${escHtml(p.outcome||'')}</p>
+          <p class="text-xs text-gray-500 mt-0.5">Co-occurrence: ${p.co_occurrence_pct||0}% · ${p.sample_count||0} samples</p>
+        </div>
+        ${confBadgeHtml(p.confidence_level)}
+      </div>
+    </div>`).join('');
+
+  const effRows=effectiveness.length
+    ? effectiveness.map(e=>`<tr class="border-t border-gray-100"><td class="py-1.5 pr-3 text-gray-700">${escHtml(e.intervention||'')}</td><td class="py-1.5 text-center text-gray-600">${e.before_rate??'—'}</td><td class="py-1.5 text-center text-gray-600">${e.after_rate??'—'}</td><td class="py-1.5 text-center font-semibold ${(e.delta||0)<0?'text-green-700':'text-red-600'}">${e.delta!=null?(e.delta>0?'+':'')+e.delta:'—'}</td></tr>`).join('')
+    : '<tr><td colspan="4" class="py-2 text-xs text-gray-500">No intervention data yet.</td></tr>';
+
+  container.innerHTML=`
+    <div class="space-y-4">
+      <div class="dl-card">
+        <div class="dl-section-title">🔥 Top Triggers</div>
+        ${topTriggers.length===0?'<p class="text-xs text-gray-500">No data yet.</p>':triggerRows}
+      </div>
+      <div class="dl-card">
+        <div class="dl-section-title">📈 Top Outcomes</div>
+        ${topOutcomes.length===0?'<p class="text-xs text-gray-500">No data yet.</p>':outcomeRows}
+      </div>
+      ${patterns.length>0?`<div class="space-y-3"><div class="text-sm font-semibold text-gray-700 mb-1">🧩 Detected Patterns</div>${patternCards}</div>`:''}
+      <div class="dl-card">
+        <div class="dl-section-title">💡 Intervention Effectiveness</div>
+        <table class="w-full text-xs">
+          <thead><tr class="text-left text-gray-500">
+            <th class="pb-2 font-semibold">Intervention</th>
+            <th class="pb-2 text-center font-semibold">Before</th>
+            <th class="pb-2 text-center font-semibold">After</th>
+            <th class="pb-2 text-center font-semibold">Delta</th>
+          </tr></thead>
+          <tbody>${effRows}</tbody>
+        </table>
+      </div>
+    </div>`;
+}
+
+// ════════════════════════════════════════════════════════════════
+// TAB 4 — CLINICIAN REPORT
+// ════════════════════════════════════════════════════════════════
+async function loadClinicianReport(refresh=false) {
+  document.getElementById('clinician-loading').classList.remove('hidden');
+  document.getElementById('clinician-content').classList.add('hidden');
+  document.getElementById('clinician-error').classList.add('hidden');
+  try {
+    const url=API_BASE+'/api/clinician-report?child_id='+CHILD_ID+(refresh?'&refresh=true':'');
+    const resp=await fetch(url);
+    if(!resp.ok) throw new Error('HTTP '+resp.status);
+    renderClinicianReport(await resp.json());
+  } catch(err) {
+    document.getElementById('clinician-loading').classList.add('hidden');
+    showBanner('clinician-error','Could not load report: '+err.message);
+  }
+}
+
+function refreshClinicianReport() {
+  loadClinicianReport(true);
+}
+
+function renderClinicianReport(d) {
+  document.getElementById('clinician-loading').classList.add('hidden');
+  const body=document.getElementById('clinician-report-body');
+
+  const metaEl=document.getElementById('clinician-generated-at');
+  if(metaEl&&d.generated_at) {
+    const ago=timeAgo(new Date(d.generated_at));
+    metaEl.textContent=(d.cached?'Cached report · ':'')+'Generated '+ago;
+  }
+
+  const dr=d.date_range||{};
+  const dateRange=dr.from&&dr.to?`${dr.from} – ${dr.to}`:'';
+
+  const freqPerWeek=(d.event_frequency&&d.event_frequency.per_week)||[];
+  const freqTotal=d.event_frequency&&d.event_frequency.total!=null?d.event_frequency.total:'';
+  const freqRows=freqPerWeek.map(r=>`
+    <tr class="border-t border-gray-100">
+      <td class="py-1.5 pr-3 text-gray-700">${escHtml(r.week||'')}</td>
+      <td class="py-1.5 text-right text-gray-600">${r.count??''}</td>
+    </tr>`).join('');
+
+  const topTriggersList=(d.top_triggers||[]).map(t=>`<li>${escHtml(typeof t==='string'?t:t.trigger||'')}</li>`).join('');
+
+  const patternRows=(d.patterns||d.top_patterns||[]).slice(0,5).map(p=>`
+    <div class="flex items-center justify-between py-1.5 border-t border-gray-100">
+      <span class="text-sm text-gray-700">${escHtml(p.trigger||'')} → ${escHtml(p.outcome||'')}</span>
+      ${confBadgeHtml(p.confidence_level)}
+    </div>`).join('');
+
+  const keyConcernsText=d.key_concerns_text||d.key_concerns||'';
+  const keyConcerns=keyConcernsText
+    ? `<div class="bg-amber-50 border border-amber-200 rounded-xl p-3 mb-3 text-xs text-amber-800 font-medium">
+         ⚠ AI-generated summary — verify against source logs before clinical use.
+       </div>
+       <div class="text-sm text-gray-700 leading-relaxed">${DOMPurify.sanitize(marked.parse(keyConcernsText))}</div>`
+    : '<p class="text-xs text-gray-500">No key concerns generated.</p>';
+
+  const intOutcomeRows=(d.intervention_outcomes||[]).map(r=>{
+    const delta=r.delta!=null?r.delta:null;
+    const deltaCls=delta!=null&&delta<0?'text-green-700':'text-red-600';
+    const deltaStr=delta!=null?(delta>0?'+':'')+delta.toFixed(3):'—';
+    return `<tr class="border-t border-gray-100">
+      <td class="py-1.5 pr-3 text-gray-700">${escHtml(r.suggestion_text||r.intervention||'')}</td>
+      <td class="py-1.5 text-center text-gray-600">${r.meltdown_rate_before??'—'}</td>
+      <td class="py-1.5 text-center text-gray-600">${r.meltdown_rate_after??'—'}</td>
+      <td class="py-1.5 text-center font-semibold ${deltaCls}">${deltaStr}</td>
+    </tr>`;
+  }).join('');
+
+  body.innerHTML=`
+    ${dateRange?`<div class="dl-card"><p class="text-sm font-semibold text-gray-600">Report period</p><p class="text-base font-bold text-gray-900 mt-1">${escHtml(dateRange)}</p></div>`:''}
+
+    ${freqRows?`<div class="dl-card">
+      <div class="dl-section-title">📊 Event Frequency${freqTotal!==''?` <span class="text-gray-400 font-normal">(${freqTotal} total)</span>`:''}
+      </div>
+      <table class="w-full text-sm"><thead><tr class="text-left text-gray-500 text-xs">
+        <th class="pb-2">Week</th><th class="pb-2 text-right">Count</th>
+      </tr></thead><tbody>${freqRows}</tbody></table>
+    </div>`:''}
+
+    ${topTriggersList?`<div class="dl-card">
+      <div class="dl-section-title">🔥 Top Triggers</div>
+      <ul class="list-disc list-inside text-sm text-gray-700 space-y-1">${topTriggersList}</ul>
+    </div>`:''}
+
+    ${patternRows?`<div class="dl-card">
+      <div class="dl-section-title">🧩 Top Patterns</div>
+      ${patternRows}
+    </div>`:''}
+
+    <div class="dl-card">
+      <div class="dl-section-title">⚠ Key Concerns</div>
+      ${keyConcerns}
+    </div>
+
+    ${intOutcomeRows?`<div class="dl-card">
+      <div class="dl-section-title">💡 Intervention Outcomes</div>
+      <table class="w-full text-sm"><thead><tr class="text-left text-gray-500 text-xs">
+        <th class="pb-2">Intervention</th><th class="pb-2 text-center">Before</th><th class="pb-2 text-center">After</th><th class="pb-2 text-center">Delta</th>
+      </tr></thead><tbody>${intOutcomeRows}</tbody></table>
+    </div>`:''}`;
+
+  document.getElementById('clinician-content').classList.remove('hidden');
+}
+
+// ════════════════════════════════════════════════════════════════
+// PAGE INIT
+// ════════════════════════════════════════════════════════════════
+document.addEventListener('DOMContentLoaded',function(){
+
+  // Build tag pills for Tab 2
+  buildTagPills('log-trigger-tags',TRIGGER_OPTIONS,selectedTriggers);
+  buildTagPills('log-tags',TAG_OPTIONS,selectedTags);
+
+  // ci-notes char counter (now lives in Tab 2 Daily Ratings card)
+  document.getElementById('ci-notes').addEventListener('input',function(){
+    document.getElementById('ci-notes-count').textContent=this.value.length;
+  });
+
+  // Date banner for Tab 2
+  const today=new Date();
+  const label=today.toLocaleDateString('en-US',{weekday:'long',month:'long',day:'numeric'});
+  const banner=document.getElementById('dl-date-banner');
+  if(banner) banner.textContent='Today — '+label;
+
+  // Restore last active tab
+  const saved=localStorage.getItem('active_tab');
+  if(saved&&ALL_TABS.includes(saved)) switchTab(saved);
+
+  // Stats badge
+  fetch(API_BASE+'/api/stats')
+    .then(r=>r.json())
+    .then(d=>{ document.getElementById('stats-badge').textContent=(d.total_items||0).toLocaleString()+' items indexed'; })
+    .catch(()=>{ document.getElementById('stats-badge').textContent='— items indexed'; });
+
+  // Health dot
+  fetch(API_BASE+'/api/health')
+    .then(r=>r.json())
+    .then(d=>{
+      const dot=document.getElementById('health-dot');
+      dot.className=d.status==='ok'?'h-2 w-2 rounded-full bg-green-500':'h-2 w-2 rounded-full bg-red-500';
+      dot.title=d.status==='ok'?'Search service: connected':'Search service: error';
+    })
+    .catch(()=>{
+      const dot=document.getElementById('health-dot');
+      dot.className='h-2 w-2 rounded-full bg-red-500'; dot.title='Search service: unreachable';
     });
-    // Initial state
-    document.getElementById('ask-btn').disabled = true;
-
-    // ════════════════════════════════════════════════════════════════════
-    // TAB SWITCHING
-    // ════════════════════════════════════════════════════════════════════
-    function switchTab(name) {
-      ['search','daily-log'].forEach(t => {
-        document.getElementById('panel-' + t).classList.toggle('hidden', t !== name);
-        const btn = document.getElementById('tab-btn-' + t);
-        if (t === name) {
-          btn.classList.remove('tab-btn-inactive');
-          btn.classList.add('tab-btn-active');
-        } else {
-          btn.classList.remove('tab-btn-active');
-          btn.classList.add('tab-btn-inactive');
-        }
-      });
-    }
-
-    // ════════════════════════════════════════════════════════════════════
-    // DAILY LOG STATE
-    // ════════════════════════════════════════════════════════════════════
-    const dlState = {};
-    let dlActiveRecognition = null;
-
-    // ── Emoji / value single-select ──────────────────────────────────────
-    function dlSelect(key, value, el) {
-      dlState[key] = value;
-      const group = el.dataset.group;
-      document.querySelectorAll(`[data-group="${group}"]`).forEach(b => {
-        b.classList.toggle('selected', b === el);
-      });
-    }
-
-    // ── Medication toggle ────────────────────────────────────────────────
-    function dlMed(taken) {
-      dlState.medicationTaken = taken;
-      const takenBtn  = document.getElementById('med-taken-btn');
-      const missedBtn = document.getElementById('med-missed-btn');
-      takenBtn.className  = 'dl-toggle-btn' + (taken  ? ' selected-taken'  : '');
-      missedBtn.className = 'dl-toggle-btn' + (!taken ? ' selected-missed' : '');
-    }
-
-    // ── Special event toggle ─────────────────────────────────────────────
-    function dlEvent(hasEvent) {
-      dlState.specialEvent = hasEvent;
-      const noBtn  = document.getElementById('event-no-btn');
-      const yesBtn = document.getElementById('event-yes-btn');
-      noBtn.className  = 'dl-toggle-btn' + (!hasEvent ? ' selected-no'  : '');
-      yesBtn.className = 'dl-toggle-btn' + (hasEvent  ? ' selected-yes' : '');
-      document.getElementById('event-details').classList.toggle('hidden', !hasEvent);
-    }
-
-    // ── Toggle a textarea visible/hidden ────────────────────────────────
-    function dlToggleText(id) {
-      const el = document.getElementById(id);
-      el.classList.toggle('hidden');
-      if (!el.classList.contains('hidden')) el.focus();
-    }
-
-    // ── Photo preview ────────────────────────────────────────────────────
-    function dlPhotoPreview(input, thumbId, areaId, stateKey) {
-      const file = input.files[0];
-      if (!file) return;
-      dlState[stateKey] = file;
-      const thumb = document.getElementById(thumbId);
-      thumb.src = URL.createObjectURL(file);
-      thumb.classList.remove('hidden');
-      document.getElementById(areaId).classList.remove('hidden');
-    }
-
-    // ── Voice input (Web Speech API) ─────────────────────────────────────
-    function dlVoice(btnId, transcriptId, stateKey) {
-      const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
-      if (!SR) {
-        alert('Voice input is not supported in this browser.\nTry Chrome on Android or desktop.');
-        return;
-      }
-      const btn = document.getElementById(btnId);
-
-      // If already recording — stop
-      if (dlActiveRecognition) {
-        dlActiveRecognition.stop();
-        dlActiveRecognition = null;
-        btn.textContent = btn.textContent.replace('⏹ Stop', '🎤 Voice Input').replace('⏹ Stop', '🎤 Voice');
-        btn.classList.remove('recording');
-        return;
-      }
-
-      const recognition = new SR();
-      recognition.lang = 'zh-CN';
-      recognition.interimResults = true;
-      recognition.maxAlternatives = 1;
-      dlActiveRecognition = recognition;
-
-      const origLabel = btn.textContent;
-      btn.textContent = '⏹ Stop';
-      btn.classList.add('recording');
-
-      const transcriptEl = document.getElementById(transcriptId);
-      transcriptEl.classList.remove('hidden');
-      transcriptEl.textContent = '…';
-
-      recognition.onresult = (e) => {
-        let interim = '', final = '';
-        for (let i = e.resultIndex; i < e.results.length; i++) {
-          const t = e.results[i][0].transcript;
-          if (e.results[i].isFinal) final += t; else interim += t;
-        }
-        transcriptEl.textContent = final || interim;
-        if (final) dlState[stateKey] = final;
-      };
-
-      recognition.onend = () => {
-        btn.textContent = origLabel;
-        btn.classList.remove('recording');
-        dlActiveRecognition = null;
-      };
-
-      recognition.onerror = (e) => {
-        transcriptEl.textContent = '⚠️ Error: ' + e.error;
-        btn.textContent = origLabel;
-        btn.classList.remove('recording');
-        dlActiveRecognition = null;
-      };
-
-      recognition.start();
-    }
-
-    // ── Submit → save to localStorage ───────────────────────────────────
-    function dlSubmit() {
-      const btn    = document.getElementById('dl-submit-btn');
-      const status = document.getElementById('dl-submit-status');
-
-      const entry = {
-        date:            document.getElementById('dl-date-input').value,
-        mood:            dlState.mood            || null,
-        foodText:        dlState.foodText        || null,
-        foodPhoto:       dlState.foodPhoto       ? dlState.foodPhoto.name : null,
-        sleepQuality:    dlState.sleep           || null,
-        bedTime:         document.getElementById('dl-bed-time').value  || null,
-        wakeTime:        document.getElementById('dl-wake-time').value || null,
-        wakeUps:         parseInt(document.getElementById('dl-wake-ups').value) || 0,
-        medicationTaken: dlState.medicationTaken ?? null,
-        therapyDone:     [...document.querySelectorAll('.therapy-cb:checked')].map(c => c.value),
-        therapyMood:     dlState.therapyMood     || null,
-        specialEvent:    dlState.specialEvent    ?? null,
-        eventCauses:     [...document.querySelectorAll('.cause-cb:checked')].map(c => c.value),
-        eventNotes:      dlState.eventNotes      || document.getElementById('event-text-area').value || null,
-        extraNotes:      dlState.extraNotes      || document.getElementById('extra-text-area').value || null,
-        savedAt:         new Date().toISOString(),
-      };
-
-      // Persist to localStorage
-      const logs = JSON.parse(localStorage.getItem('autism-daily-logs') || '[]');
-      logs.unshift(entry);
-      localStorage.setItem('autism-daily-logs', JSON.stringify(logs));
-
-      // Feedback
-      btn.disabled = true;
-      status.textContent = '✅ Log saved! (' + logs.length + ' total)';
-      status.className = 'text-green-600 text-sm text-center mt-1 font-medium';
-      status.classList.remove('hidden');
-
-      setTimeout(() => {
-        btn.disabled = false;
-        status.classList.add('hidden');
-        dlReset();
-      }, 2500);
-    }
-
-    // ── Reset the entire form ────────────────────────────────────────────
-    function dlReset() {
-      Object.keys(dlState).forEach(k => delete dlState[k]);
-
-      // Deselect all emoji / toggle buttons
-      document.querySelectorAll('.dl-emoji-btn').forEach(b => b.classList.remove('selected'));
-      document.querySelectorAll('.dl-toggle-btn').forEach(b => {
-        b.className = 'dl-toggle-btn';
-      });
-
-      // Uncheck all checkboxes
-      document.querySelectorAll('.therapy-cb, .cause-cb').forEach(c => c.checked = false);
-
-      // Clear textareas
-      ['event-text-area','extra-text-area'].forEach(id => {
-        const el = document.getElementById(id);
-        el.value = '';
-        el.classList.add('hidden');
-      });
-
-      // Hide transcripts & previews
-      ['food-transcript','event-transcript','extra-transcript'].forEach(id => {
-        const el = document.getElementById(id);
-        el.textContent = '';
-        el.classList.add('hidden');
-      });
-      ['food-preview-area','extra-preview-area'].forEach(id =>
-        document.getElementById(id).classList.add('hidden'));
-      ['food-thumb','extra-thumb'].forEach(id =>
-        document.getElementById(id).classList.add('hidden'));
-
-      // Hide event details
-      document.getElementById('event-details').classList.add('hidden');
-
-      // Reset file inputs
-      ['food-photo-input','extra-photo-input'].forEach(id =>
-        document.getElementById(id).value = '');
-    }
-
-    // ════════════════════════════════════════════════════════════════════
-    // SERVER TRANSCRIPTION  (collect API → faster-whisper)
-    // ════════════════════════════════════════════════════════════════════
-    const COLLECT_API = '/collect';
-
-    let mediaRecorder = null;
-    let audioChunks   = [];
-
-    async function dlServerTranscribe() {
-      const btn    = document.getElementById('dl-record-btn');
-      const status = document.getElementById('dl-record-status');
-
-      // ── If already recording → stop and send ──────────────────────────
-      if (mediaRecorder && mediaRecorder.state === 'recording') {
-        mediaRecorder.stop();
-        return;
-      }
-
-      // ── Start recording ───────────────────────────────────────────────
-      let stream;
-      try {
-        stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      } catch (err) {
-        status.textContent = '⚠️ Mic access denied: ' + err.message;
-        return;
-      }
-
-      audioChunks  = [];
-      mediaRecorder = new MediaRecorder(stream);
-
-      mediaRecorder.ondataavailable = e => {
-        if (e.data.size > 0) audioChunks.push(e.data);
-      };
-
-      mediaRecorder.onstop = async () => {
-        stream.getTracks().forEach(t => t.stop());
-        btn.textContent  = '🎙️ Record & Transcribe';
-        btn.classList.remove('recording');
-        status.textContent = '⏳ Transcribing…';
-
-        const blob = new Blob(audioChunks, { type: 'audio/webm' });
-        const fd   = new FormData();
-        fd.append('audio', blob, 'recording.webm');
-
-        try {
-          const res  = await fetch(COLLECT_API + '/transcribe', { method: 'POST', body: fd });
-          if (!res.ok) {
-            const err = await res.json().catch(() => ({}));
-            throw new Error(err.detail || 'HTTP ' + res.status);
-          }
-          const data = await res.json();
-          dlShowTranscript(data.text || '(no speech detected)');
-          status.textContent = `✅ Done (${data.duration}s, lang: ${data.language})`;
-        } catch (err) {
-          dlShowTranscript('⚠️ ' + err.message);
-          status.textContent = '❌ Transcription failed';
-        }
-      };
-
-      mediaRecorder.start();
-      btn.textContent = '⏹ Stop Recording';
-      btn.classList.add('recording');
-      status.textContent = '🔴 Recording… tap again to stop';
-    }
-
-    function dlShowTranscript(text) {
-      document.getElementById('dl-transcript-text').textContent = text;
-      document.getElementById('dl-transcript-banner').classList.remove('hidden');
-      // Scroll to top of Daily Log panel so banner is visible
-      document.getElementById('panel-daily-log').scrollIntoView({ behavior: 'smooth', block: 'start' });
-    }
-
-    // ── On page load: stats + health ───────────────────────────────────────
-    document.addEventListener('DOMContentLoaded', function() {
-
-      // Daily Log — set today's date
-      (function() {
-        const today = new Date();
-        const iso   = today.toISOString().split('T')[0];
-        const label = today.toLocaleDateString('en-US', { weekday:'long', month:'long', day:'numeric' });
-        const banner = document.getElementById('dl-date-banner');
-        if (banner) banner.textContent = 'Today — ' + label;
-        // hidden input for form submission
-        const inp = document.createElement('input');
-        inp.type = 'hidden'; inp.id = 'dl-date-input'; inp.value = iso;
-        document.getElementById('panel-daily-log').appendChild(inp);
-      })();
-
-      // Stats badge
-      fetch(API_BASE + '/api/stats')
-        .then(r => r.json())
-        .then(d => {
-          const n = (d.total_items || 0).toLocaleString();
-          document.getElementById('stats-badge').textContent = n + ' items indexed';
-        })
-        .catch(() => {
-          document.getElementById('stats-badge').textContent = '— items indexed';
-        });
-
-      // Health indicator
-      fetch(API_BASE + '/api/health')
-        .then(r => r.json())
-        .then(d => {
-          const dot = document.getElementById('health-dot');
-          dot.className = (d.status === 'ok')
-            ? 'h-2 w-2 rounded-full bg-green-500'
-            : 'h-2 w-2 rounded-full bg-red-500';
-          dot.title = d.status === 'ok' ? 'Search service: connected' : 'Search service: error';
-        })
-        .catch(() => {
-          const dot = document.getElementById('health-dot');
-          dot.className = 'h-2 w-2 rounded-full bg-red-500';
-          dot.title = 'Search service: unreachable';
-        });
-    });
-  </script>
-
+});
+</script>
 </body>
 </html>
