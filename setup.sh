@@ -4,6 +4,10 @@ PORT=18000
 PIDFILE=".serve.pid"
 LOGFILE="serve.log"
 
+NGINX_TEMPLATE="config/nginx/ui.conf"
+NGINX_TARGET="/etc/nginx/conf.d/ui.conf"
+NGINX_PLACEHOLDER="__PUBLIC_IP__"
+
 get_local_ip() {
     # Try Linux first, then macOS, then fall back to localhost
     ip route get 1.1.1.1 2>/dev/null | awk '{print $7; exit}' \
@@ -11,6 +15,105 @@ get_local_ip() {
     || ipconfig getifaddr en1 2>/dev/null \
     || hostname -I 2>/dev/null | awk '{print $1}' \
     || echo "127.0.0.1"
+}
+
+get_public_ip() {
+    # Query several public IP echo services in turn; first success wins.
+    # Each call has a hard timeout so a hung resolver can't stall setup.
+    local svc ip
+    for svc in https://ifconfig.me https://api.ipify.org https://icanhazip.com https://ipv4.icanhazip.com; do
+        ip=$(curl -fsS --max-time 4 -4 "$svc" 2>/dev/null | tr -d '[:space:]')
+        if [[ "$ip" =~ ^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "$ip"
+            return 0
+        fi
+    done
+    return 1
+}
+
+install_nginx_config() {
+    echo ""
+    if [ ! -f "$NGINX_TEMPLATE" ]; then
+        echo "  ❌  Template not found: $NGINX_TEMPLATE"
+        echo "      (run this from the ui/ project directory)"
+        echo ""
+        return
+    fi
+
+    if ! grep -q "$NGINX_PLACEHOLDER" "$NGINX_TEMPLATE"; then
+        echo "  ⚠️   Placeholder $NGINX_PLACEHOLDER not found in $NGINX_TEMPLATE"
+        echo "      Has the template already been substituted by hand?"
+        echo ""
+        return
+    fi
+
+    echo "  🌐  Detecting public IP..."
+    local ip
+    ip=$(get_public_ip)
+    if [ -z "$ip" ]; then
+        echo "  ❌  Could not detect public IP from any echo service"
+        printf "  ✏️   Enter public IP manually (or blank to abort): "
+        read -r ip
+        if [[ ! "$ip" =~ ^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "  ✋  Aborted"
+            echo ""
+            return
+        fi
+    fi
+    echo "  ✅  Public IP: $ip"
+
+    # Render template into a tempfile, then install via sudo.
+    local rendered
+    rendered=$(mktemp)
+    sed "s/$NGINX_PLACEHOLDER/$ip/g" "$NGINX_TEMPLATE" > "$rendered"
+
+    if grep -q "$NGINX_PLACEHOLDER" "$rendered"; then
+        echo "  ❌  Substitution failed — placeholder still present"
+        rm -f "$rendered"
+        echo ""
+        return
+    fi
+
+    # Show the diff (if any) before clobbering the live file
+    if [ -f "$NGINX_TARGET" ] && command -v diff >/dev/null 2>&1; then
+        if sudo diff -q "$NGINX_TARGET" "$rendered" >/dev/null 2>&1; then
+            echo "  ✓   $NGINX_TARGET is already up-to-date"
+            rm -f "$rendered"
+            echo ""
+            return
+        fi
+        echo "  📋  Pending changes vs $NGINX_TARGET:"
+        sudo diff -u "$NGINX_TARGET" "$rendered" | sed 's/^/      /' | head -40
+    fi
+
+    printf "  ❓  Install and reload nginx? [y/N] "
+    read -r confirm
+    if [[ "$confirm" != "y" && "$confirm" != "Y" ]]; then
+        echo "  ✋  Aborted (rendered file kept at $rendered)"
+        echo ""
+        return
+    fi
+
+    sudo install -m 644 -o root -g root "$rendered" "$NGINX_TARGET" || {
+        echo "  ❌  Install failed"
+        rm -f "$rendered"
+        echo ""
+        return
+    }
+    rm -f "$rendered"
+
+    if ! sudo nginx -t 2>&1 | sed 's/^/      /'; then
+        echo "  ❌  nginx -t failed — config NOT reloaded"
+        echo ""
+        return
+    fi
+
+    if sudo systemctl reload nginx; then
+        echo "  ✅  nginx reloaded — $NGINX_TARGET is live with public IP $ip"
+    else
+        echo "  ❌  systemctl reload nginx failed"
+    fi
+    echo ""
 }
 
 port_pid() {
@@ -151,6 +254,7 @@ while true; do
     echo "║  1) Start / Restart service      ║"
     echo "║  2) Stop service                 ║"
     echo "║  3) Service status               ║"
+    echo "║  4) Install nginx config         ║"
     echo "║  0) Exit                         ║"
     echo "╚══════════════════════════════════╝"
     printf "  Choose an option: "
@@ -160,6 +264,7 @@ while true; do
         1) start_service ;;
         2) stop_service ;;
         3) service_status ;;
+        4) install_nginx_config ;;
         0) echo ""; echo "  Bye!"; echo ""; exit 0 ;;
         *) echo ""; echo "  ⚠️  Invalid option, try again."; echo "" ;;
     esac
