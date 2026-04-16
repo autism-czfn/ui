@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 Minimal static server for the autism-search UI.
-Serves index.html at https://0.0.0.0:18000/
+Serves index.html at https://0.0.0.0:19000/
 """
 import http.server
 import socketserver
@@ -10,7 +10,7 @@ import os
 from pathlib import Path
 
 HOST     = "0.0.0.0"
-PORT     = 18000
+PORT     = 19000
 API_PORT = 3001
 
 CERT_DIR = Path(__file__).parent.parent / "certs"
