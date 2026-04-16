@@ -4,6 +4,53 @@
 
 ---
 
+## 最新更新 / Latest Changes (2026-04-15)
+
+今日共 4 次提交，核心是将 UI 从「搜索 + 日志」升级为一站式「Autism Support」多标签工作台。
+
+### 新功能亮点
+
+- **标签页重构**：页面标题由 *Autism Q&A + Daily Log* 改为 **Autism Support**，新增四个标签页：
+  - 🔍 **Search** — 原有自闭症检索问答
+  - 📋 **Log Today** — 每日事件日志 + 每日检查打分
+  - 📊 **Insights** — 周报摘要、触发因素、干预效果
+  - 🏥 **Clinician** — 面向临床医生的报告视图
+- **今日条目自动回填**（`loadTodayEntry`）：切换到 Log Today 标签时，自动拉取当天已有日志和检查打分填入表单，按钮切换为「Update Log ✅」，避免重复录入。
+- **语音自动填写日志**：语音录入后字段自动保存并回填，横幅提示「Saved automatically. Fields filled below for your review.」。
+- **每日检查打分**：新增 10 项评分（睡眠、情绪、感官敏感度、食欲、社交耐受、崩溃次数、作息规律、沟通难易、运动量、照护者评分）+ 备注。
+- **干预追踪**：Log Today 中可查看未结案干预（`/interventions?status=open`），并提交 outcome（`PUT /interventions/:id/outcome`）。
+- **周报渲染适配新 schema**：`renderWeeklySummary` 改为读取 `data.stats.*`（`event_count`、`meltdown_count`、`top_triggers`、`interventions_adopted`）及 `week_start/week_end`。
+- **Admin 页面 bug 修复**（commit `bedcc3b`）。
+- **Public IP 占位符**（commit `61d5fce`）：为后续外网访问预留配置位。
+
+### 基础设施变更
+
+- **UI 端口迁移**：`18000` → `19000`（`serve.py`、`README.md`、`config/nginx/ui.conf` 同步更新）。
+- **Nginx 配置新增**：`config/nginx/ui.conf` 新增 175 行反代配置，upstream 包含 `ui_backend` / `search_backend` / `collect_backend` / `django_admin`，并带基础 WAF 拦截（wp-admin、phpmyadmin、.git、.env 等）与每 IP 限流。
+- **API 路径简化**：前端调用移除 `/api/v1` 前缀，改为 `/logs`、`/interventions`、`/daily-checks/:date` 等更短路径。
+- **`setup.sh` 扩展**：+107 行 / −…，集成新服务管理流程。
+
+### 变更文件统计
+
+| 文件 | +/− |
+|---|---|
+| `index.html` | +1541 / −1203（近乎重写，2744 行） |
+| `config/nginx/ui.conf` | +175 / −0（全新文件） |
+| `setup.sh` | +107 / −… |
+| `README.md` | +2 / −2 |
+| `serve.py` | +2 / −2 |
+
+### 今日提交
+
+| Commit | 说明 |
+|---|---|
+| `61d5fce` | add place holder for public ip |
+| `bedcc3b` | fix bugs for admin page |
+| `16587e7` | fix bugs — 大规模 UI 重构，端口迁移，新增 nginx 配置 |
+| `a0fc36b` | fix bugs — 今日条目自动回填、API 路径修正、周报 schema 适配 |
+
+---
+
 ## 架构设计
 
 ```
