@@ -25,7 +25,7 @@
 
 ### 基础设施变更
 
-- **UI 端口迁移**：`18000` → `19000`（`serve.py`、`README.md`、`config/nginx/ui.conf` 同步更新）。
+- **UI 端口**：`18000`（`serve.py`、`README.md`、`config/nginx/ui.conf` 同步配置）。
 - **Nginx 配置新增**：`config/nginx/ui.conf` 新增 175 行反代配置，upstream 包含 `ui_backend` / `search_backend` / `collect_backend` / `django_admin`，并带基础 WAF 拦截（wp-admin、phpmyadmin、.git、.env 等）与每 IP 限流。
 - **API 路径简化**：前端调用移除 `/api/v1` 前缀，改为 `/logs`、`/interventions`、`/daily-checks/:date` 等更短路径。
 - **`setup.sh` 扩展**：+107 行 / −…，集成新服务管理流程。
@@ -59,7 +59,7 @@
     │  GET /          → index.html（静态页面）
     ▼
 UI Web 服务器（serve.py）
-  <LAN_IP>:19000
+  <LAN_IP>:18000
 
     │
     │  GET /api/search?q=...   跨域请求（CORS）
@@ -177,7 +177,7 @@ UI 层本身不含任何搜索逻辑，所有搜索与 AI 摘要均由 `autism-s
 
 选择 `1) Start / Restart service` 即可。
 
-服务启动后访问：**https://\<LAN_IP\>:19000/**（LAN IP 由服务器自动检测）
+服务启动后访问：**https://\<LAN_IP\>:18000/**（LAN IP 由服务器自动检测）
 
 ---
 

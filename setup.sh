@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-PORT=19000
+PORT=18000
 PIDFILE=".serve.pid"
 LOGFILE="serve.log"
 

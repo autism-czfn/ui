@@ -481,12 +481,13 @@
 <!-- ══════════════════════════════════════════════════════════════ -->
 <script>
 // ── Constants ─────────────────────────────────────────────────────
-// Derive the host from the current page URL so no IP is hardcoded.
-// Search runs on port 3002; collect/transcribe runs on port 18002.
-// Both must be reachable at the same hostname the browser used for the UI.
-const _HOST       = window.location.protocol + '//' + window.location.hostname;
-const API_BASE    = _HOST + ':3002';
-const COLLECT_API = _HOST + ':18002';
+// Derive the origin from the current page URL so no IP is hardcoded.
+// All API calls go through nginx on the same origin (no extra ports).
+//   /api/*      → search backend (127.0.0.1:3001)
+//   /collect/*  → collect/transcribe backend (127.0.0.1:18001)
+const _ORIGIN     = window.location.origin;
+const API_BASE    = _ORIGIN;
+const COLLECT_API = _ORIGIN + '/collect';
 const CHILD_ID    = 'default';
 
 // ── Source badge colours ───────────────────────────────────────────
