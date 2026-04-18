@@ -41,11 +41,18 @@
     .intervention-row { border:1px solid #e5e7eb; border-radius:.75rem; padding:.85rem 1rem; background:white; }
     /* pattern card confidence badge */
     .conf-badge { display:inline-flex; align-items:center; font-size:.7rem; font-weight:700; padding:.2rem .65rem; border-radius:9999px; border:1.5px solid; }
-    /* print: hide chrome */
+    /* confidence progress bar */
+    .conf-bar-bg { background:#e5e7eb; border-radius:9999px; height:6px; }
+    .conf-bar-fill { border-radius:9999px; height:6px; transition:width .4s ease; }
+    /* sources modal overlay */
+    .modal-overlay { position:fixed; inset:0; background:rgba(0,0,0,.4); z-index:50; display:flex; align-items:center; justify-content:center; }
+    .modal-content { background:white; border-radius:1rem; max-width:40rem; width:90%; max-height:80vh; overflow-y:auto; padding:1.5rem; box-shadow:0 25px 50px rgba(0,0,0,.15); }
+    /* print: hide chrome, expand evidence panels */
     @media print {
       header, #tab-bar, #export-btn, .no-print { display:none !important; }
       body { background:white; }
       .dl-card { box-shadow:none; border:1px solid #ddd; }
+      [id^="evidence-panel-"] { display:block !important; }
     }
   </style>
 </head>
@@ -64,6 +71,7 @@
             class="text-xs bg-indigo-50 text-indigo-700 border border-indigo-200 rounded-full px-3 py-1 font-medium">
         loading…
       </span>
+      <button onclick="openSourcesModal()" class="text-xs text-gray-500 hover:text-indigo-600 font-medium transition cursor-pointer bg-transparent border-0" title="View our sources">ℹ️ Sources</button>
     </div>
   </div>
 </header>
@@ -148,8 +156,21 @@
             <option value="50">Top 50</option>
           </select>
         </div>
+        <div>
+          <label class="block text-xs text-gray-500 mb-1">Audience</label>
+          <select id="filter-audience" onchange="onAudienceChange()" class="text-sm border border-gray-300 rounded-lg px-3 py-1.5 focus:outline-none focus:ring-2 focus:ring-indigo-400 bg-white">
+            <option value="parent_facing">Parent Mode</option>
+            <option value="clinician_facing">Clinical Mode</option>
+          </select>
+        </div>
       </div>
     </details>
+  </div>
+
+  <!-- Trigger-based search suggestions (P5) -->
+  <div id="trigger-chips" class="hidden mb-4">
+    <p class="text-xs text-gray-500 mb-2">Quick searches from your child's triggers:</p>
+    <div id="trigger-chips-list" class="flex flex-wrap gap-2"></div>
   </div>
 
   <div id="result">
@@ -478,6 +499,25 @@
 </main>
 </div><!-- /panel-clinician -->
 
+<!-- ── Sources Modal (P3) ──────────────────────────────────────── -->
+<div id="sources-modal" class="modal-overlay hidden" onclick="if(event.target===this)closeSourcesModal()">
+  <div class="modal-content">
+    <div class="flex items-center justify-between mb-4">
+      <h2 class="text-lg font-bold text-gray-800">Our Sources</h2>
+      <button onclick="closeSourcesModal()" class="text-gray-400 hover:text-gray-600 text-xl font-bold cursor-pointer bg-transparent border-0">&times;</button>
+    </div>
+    <div class="mb-4 space-y-2 text-xs text-gray-600">
+      <p>We only use trusted, verified sources to support insights and search results. Sources are grouped by trust tier:</p>
+      <div class="flex items-center gap-2"><span class="inline-block w-3 h-3 rounded-full bg-green-200 border border-green-400"></span><strong>Official Source</strong> — Government health agencies and clinical guidelines bodies</div>
+      <div class="flex items-center gap-2"><span class="inline-block w-3 h-3 rounded-full bg-blue-200 border border-blue-400"></span><strong>Academic Source</strong> — Peer-reviewed research and academic medical centers</div>
+      <div class="flex items-center gap-2"><span class="inline-block w-3 h-3 rounded-full bg-gray-200 border border-gray-400"></span><strong>Verified Nonprofit</strong> — Established autism advocacy and support organizations</div>
+    </div>
+    <div id="sources-modal-body">
+      <p class="text-xs text-gray-400">Loading sources…</p>
+    </div>
+  </div>
+</div>
+
 <!-- ══════════════════════════════════════════════════════════════ -->
 <script>
 // ── Constants ─────────────────────────────────────────────────────
@@ -503,6 +543,23 @@ const SOURCE_COLORS = {
 };
 function sourceBadgeClass(s) { return SOURCE_COLORS[s] || 'bg-gray-100 text-gray-700'; }
 
+// ── Authority tier badge config ────────────────────────────────────
+const TIER_BADGE = {
+  1: { label:'Official Source',    cls:'bg-green-100 text-green-800 border border-green-300' },
+  2: { label:'Academic Source',    cls:'bg-blue-100 text-blue-800 border border-blue-300' },
+  3: { label:'Verified Nonprofit', cls:'bg-gray-100 text-gray-700 border border-gray-300' },
+};
+function tierBadgeHtml(tier) {
+  const b = TIER_BADGE[tier]; if (!b) return '';
+  return `<span class="inline-flex items-center text-xs font-medium px-2 py-0.5 rounded-full ${b.cls}">${b.label}</span>`;
+}
+function audienceBadgeHtml(audienceType) {
+  if (!audienceType) return '';
+  if (audienceType === 'parent_facing')    return `<span class="inline-flex items-center text-xs font-medium px-2 py-0.5 rounded-full bg-violet-50 text-violet-700 border border-violet-200">Parent Guide</span>`;
+  if (audienceType === 'clinician_facing') return `<span class="inline-flex items-center text-xs font-medium px-2 py-0.5 rounded-full bg-amber-50 text-amber-700 border border-amber-200">Clinical Reference</span>`;
+  return '';
+}
+
 // ── Confidence badge config ────────────────────────────────────────
 const CONF_BADGE = {
   strong:            { label:'Strong Pattern',   cls:'bg-green-100 text-green-800 border-green-300' },
@@ -522,11 +579,23 @@ function fmtDate(s) {
 }
 function scrollToSource(n) {
   const el = document.getElementById('source-' + n);
-  if (el) el.scrollIntoView({behavior:'smooth',block:'start'});
+  if (!el) return;
+  el.scrollIntoView({behavior:'smooth',block:'start'});
+  // Auto-expand traceability detail if available
+  const chunkId = el.dataset.chunkId;
+  const panel = document.getElementById('trace-panel-' + n);
+  if (chunkId && panel && !panel.dataset.loaded) {
+    toggleTraceability(n, chunkId);
+  }
 }
 function escHtml(str) {
   return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
                     .replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+}
+/** Local date string YYYY-MM-DD (user's timezone, not UTC). */
+function localDateStr(d) {
+  d = d instanceof Date ? d : new Date(d || Date.now());
+  return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
 }
 function timeAgo(date) {
   const s=Math.round((Date.now()-date)/1000);
@@ -581,10 +650,234 @@ function setLoading(on) {
   }
 }
 
+// ── Confidence progress bar (P2) ──────────────────────────────────
+const CONF_PROGRESS = {
+  strong:            { pct:90,  label:'Strong evidence',  color:'bg-green-500' },
+  possible:          { pct:50,  label:'Moderate',          color:'bg-yellow-500' },
+  insufficient_data: { pct:15,  label:'Limited',           color:'bg-gray-400' },
+};
+function confProgressHtml(level) {
+  const c = CONF_PROGRESS[level] || CONF_PROGRESS['insufficient_data'];
+  return `<div class="flex items-center gap-3">
+    <div class="conf-bar-bg flex-1"><div class="conf-bar-fill ${c.color}" style="width:${c.pct}%"></div></div>
+    <span class="text-xs font-medium text-gray-600 whitespace-nowrap">${c.label}</span>
+  </div>`;
+}
+
+// ── Evidence card builder (P7.3) ──────────────────────────────────
+function buildEvidenceCard(card) {
+  const confTag = card.confidence_tag === 'high'
+    ? '<span class="text-xs font-medium text-green-700 bg-green-50 px-1.5 py-0.5 rounded-full">High relevance</span>'
+    : card.confidence_tag === 'medium'
+    ? '<span class="text-xs font-medium text-yellow-700 bg-yellow-50 px-1.5 py-0.5 rounded-full">Medium relevance</span>'
+    : '';
+  return `<div class="bg-white rounded-lg border border-gray-200 p-3">
+    <div class="flex items-start gap-2">
+      <span class="text-base flex-none">📘</span>
+      <div class="flex-1 min-w-0">
+        <div class="flex items-center gap-2 flex-wrap">
+          <span class="text-xs font-semibold text-gray-800">${escHtml(card.organization_name||'')}</span>
+          ${card.publication_type?`<span class="text-xs text-gray-400">· ${escHtml(card.publication_type)}</span>`:''}
+          ${confTag}
+        </div>
+        <p class="text-xs font-medium text-gray-700 mt-1">${escHtml(card.source_title||'')}</p>
+        <p class="text-xs text-gray-500 mt-0.5 leading-relaxed">${escHtml(card.summary||'')}</p>
+        ${card.link?`<a href="${card.link}" target="_blank" rel="noopener noreferrer" class="text-xs text-indigo-600 hover:text-indigo-800 mt-1 inline-block">View source ↗</a>`:''}
+      </div>
+    </div>
+  </div>`;
+}
+
+// ── Insight card builder (P7.2) ───────────────────────────────────
+const INSIGHT_SUBTITLE = {
+  strong:            'Strong pattern detected',
+  possible:          'Possible pattern detected',
+  insufficient_data: 'Pattern observed (limited data)',
+};
+function buildInsightCard(p, index) {
+  const subtitle = (INSIGHT_SUBTITLE[p.confidence_level] || 'Pattern observed') + ' · ' + (p.co_occurrence_pct||0) + '% co-occurrence';
+  const evidence = p.evidence || [];
+  const recs = p.recommendations || [];
+
+  // Layer 3 — Evidence cards (collapsed)
+  let layer3 = '';
+  if (evidence.length > 0) {
+    const cards = evidence.map(c => buildEvidenceCard(c)).join('');
+    layer3 = `<div class="mt-3">
+      <button id="evidence-toggle-${index}" onclick="toggleEvidence(${index})" role="button" tabindex="0"
+              onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();toggleEvidence(${index})}"
+              class="text-xs text-indigo-600 font-medium hover:text-indigo-800 cursor-pointer bg-transparent border-0">
+        📘 View sources (${evidence.length})
+      </button>
+      <div id="evidence-panel-${index}" class="hidden mt-2 space-y-2">${cards}</div>
+    </div>`;
+  }
+
+  // Layer 4 — Recommendations
+  let layer4 = '';
+  if (recs.length > 0) {
+    const items = recs.map(r => `<li class="flex gap-2"><span class="text-green-600 flex-none">✓</span><span>${escHtml(r.text)}</span></li>`).join('');
+    layer4 = `<div class="mt-3 border-t border-gray-100 pt-3">
+      <p class="text-xs font-semibold text-gray-600 mb-1">Suggested next steps</p>
+      <ul class="text-sm text-gray-700 space-y-1">${items}</ul>
+    </div>`;
+  }
+
+  return `<div class="dl-card">
+    <div class="flex items-start justify-between gap-3">
+      <div>
+        <p class="text-sm font-semibold text-gray-800">${escHtml(p.trigger||'')}${(p.raw_signals&&p.raw_signals.length)?` <span class="text-red-500 font-medium">(${p.raw_signals.map(s=>escHtml(s)).join(', ')})</span>`:''} → ${escHtml(p.outcome||'')}</p>
+        <p class="text-xs text-gray-500 mt-0.5">${escHtml(subtitle)}</p>
+      </div>
+      ${confBadgeHtml(p.confidence_level)}
+    </div>
+    <div class="mt-3 bg-indigo-50 rounded-lg p-3">
+      <p class="text-xs font-semibold text-indigo-600 mb-1">Your child's data</p>
+      <p class="text-sm text-gray-700">Observed in ${p.co_occurrence_count||0} out of ${p.total_trigger_events||0} recorded ${escHtml(p.trigger||'')} episodes (${p.co_occurrence_pct||0}%)</p>
+      <p class="text-xs text-gray-500 mt-1">Based on ${p.sample_count||0} samples</p>
+    </div>
+    ${layer3}
+    ${layer4}
+  </div>`;
+}
+
+// ── Toggle evidence expand/collapse (P7.4) ────────────────────────
+function toggleEvidence(index) {
+  const panel = document.getElementById('evidence-panel-' + index);
+  const btn = document.getElementById('evidence-toggle-' + index);
+  if (!panel || !btn) return;
+  const hidden = panel.classList.toggle('hidden');
+  const count = panel.children.length;
+  btn.textContent = hidden ? '📘 View sources (' + count + ')' : '📘 Hide sources';
+}
+
+// ── Evidence traceability panel (P1.2) ─────────────────────────────
+async function toggleTraceability(rank, chunkId) {
+  const panel = document.getElementById('trace-panel-' + rank);
+  const btn = document.getElementById('trace-toggle-' + rank);
+  if (!panel || !btn) return;
+  // If already loaded, just toggle visibility
+  if (panel.dataset.loaded) {
+    const hidden = panel.classList.toggle('hidden');
+    btn.textContent = hidden ? 'Show source details' : 'Hide source details';
+    return;
+  }
+  // Fetch evidence detail
+  btn.textContent = 'Loading…';
+  try {
+    const resp = await fetch(API_BASE + '/api/evidence/' + chunkId);
+    if (!resp.ok) throw new Error('Not found');
+    const d = await resp.json();
+    panel.innerHTML = `<div class="bg-gray-50 rounded-lg border border-gray-200 p-3 space-y-2">
+      <p class="text-sm font-semibold text-gray-800">${escHtml(d.page_title||'')}</p>
+      ${d.organization_name ? `<div class="flex items-center gap-2">${tierBadgeHtml(d.authority_tier)}<span class="text-xs text-gray-500">${escHtml(d.organization_name)}</span></div>` : ''}
+      <blockquote class="text-xs text-gray-600 leading-relaxed border-l-2 border-indigo-300 pl-3 italic">${escHtml(d.snippet||'')}</blockquote>
+      ${d.page_url ? `<a href="${d.page_url}" target="_blank" rel="noopener noreferrer" class="inline-flex items-center gap-1 text-xs text-indigo-600 hover:text-indigo-800 font-medium">View full source <span>↗</span></a>` : ''}
+    </div>`;
+    panel.dataset.loaded = '1';
+    panel.classList.remove('hidden');
+    btn.textContent = 'Hide source details';
+  } catch {
+    const sourceCard = document.getElementById('source-' + rank);
+    const fallbackUrl = sourceCard ? sourceCard.querySelector('a[target="_blank"]')?.href : '';
+    panel.innerHTML = `<p class="text-xs text-gray-500">Source details unavailable${fallbackUrl ? ` — <a href="${fallbackUrl}" target="_blank" rel="noopener noreferrer" class="text-indigo-600 hover:text-indigo-800">view original link</a>` : ''}</p>`;
+    panel.dataset.loaded = '1';
+    panel.classList.remove('hidden');
+    btn.textContent = 'Hide source details';
+  }
+}
+
+// ── Sources modal (P3) ────────────────────────────────────────────
+async function openSourcesModal() {
+  document.getElementById('sources-modal').classList.remove('hidden');
+  const body = document.getElementById('sources-modal-body');
+  body.innerHTML = '<p class="text-xs text-gray-400">Loading sources…</p>';
+  try {
+    const resp = await fetch(API_BASE + '/api/sources');
+    if (!resp.ok) throw new Error('Failed to load');
+    const data = await resp.json();
+    const sources = data.sources || [];
+    if (sources.length === 0) { body.innerHTML = '<p class="text-xs text-gray-500">No sources available.</p>'; return; }
+    const tiers = {1:[], 2:[], 3:[]};
+    sources.forEach(s => { const t = s.authority_tier || 3; (tiers[t] = tiers[t] || []).push(s); });
+    const TIER_LABELS = {1:'Official Sources', 2:'Academic Sources', 3:'Verified Nonprofits'};
+    const TIER_DOT = {1:'bg-green-300 border-green-500', 2:'bg-blue-300 border-blue-500', 3:'bg-gray-300 border-gray-500'};
+    let html = '';
+    [1,2,3].forEach(tier => {
+      const list = tiers[tier]; if (!list || list.length === 0) return;
+      html += `<div class="mb-4"><p class="text-xs font-bold text-gray-700 mb-2 flex items-center gap-2"><span class="w-2.5 h-2.5 rounded-full border ${TIER_DOT[tier]} inline-block"></span>${TIER_LABELS[tier]}</p>`;
+      html += '<div class="space-y-1">';
+      list.forEach(s => {
+        html += `<div class="flex items-center justify-between text-xs py-1 px-2 rounded hover:bg-gray-50">
+          <span class="font-medium text-gray-800">${escHtml(s.source_name||s.domain||'')}</span>
+          <span class="text-gray-400">${escHtml(s.country||'')} · ${escHtml(s.language||'')}</span>
+        </div>`;
+      });
+      html += '</div></div>';
+    });
+    body.innerHTML = html;
+  } catch {
+    body.innerHTML = '<p class="text-sm text-gray-500">Unable to load source list. Please try again later.</p><button onclick="openSourcesModal()" class="mt-2 text-xs text-indigo-600 hover:text-indigo-800 cursor-pointer bg-transparent border-0">Retry</button>';
+  }
+}
+function closeSourcesModal() { document.getElementById('sources-modal').classList.add('hidden'); }
+
+// ── Audience toggle (P4) ──────────────────────────────────────────
+function initAudienceToggle() {
+  const saved = localStorage.getItem('audience_mode') || 'parent_facing';
+  const el = document.getElementById('filter-audience');
+  if (el) el.value = saved;
+}
+function onAudienceChange() {
+  const el = document.getElementById('filter-audience');
+  if (!el) return;
+  localStorage.setItem('audience_mode', el.value);
+  // Re-run search if results are visible
+  const resultEl = document.getElementById('result');
+  if (resultEl && !resultEl.querySelector('.text-center.text-gray-400')) doSearch();
+}
+
+// ── Trigger chips (P5) ────────────────────────────────────────────
+let _triggerVocab = null;
+async function loadTriggerChips() {
+  const container = document.getElementById('trigger-chips');
+  const list = document.getElementById('trigger-chips-list');
+  if (!container || !list) return;
+  try {
+    // Load vocabulary
+    if (!_triggerVocab) {
+      const resp = await fetch(API_BASE.replace('/api','') + '/collect/triggers/vocabulary');
+      if (resp.ok) _triggerVocab = await resp.json();
+    }
+    // Load recent triggers from user's logs
+    let recentTriggers = [];
+    try {
+      const lr = await fetch(API_BASE + '/api/insights?days=7');
+      if (lr.ok) { const d = await lr.json(); recentTriggers = (d.top_triggers||[]).slice(0,5).map(t => typeof t==='string'?t:t.trigger||''); }
+    } catch {}
+    const chips = recentTriggers.length > 0 ? recentTriggers
+      : (_triggerVocab && Array.isArray(_triggerVocab) ? _triggerVocab.slice(0,6)
+        : ['noise','transitions','sleep','sensory_overload','routine_change','social']);
+    if (chips.length === 0) return;
+    const CHIP_LABELS = {noise:'Noise sensitivity',transitions:'Transitions',sleep:'Sleep issues',
+      sensory_overload:'Sensory overload',routine_change:'Routine changes',social:'Social situations',
+      food:'Food issues',screens:'Screen time',crowd:'Crowds',school_stress:'School stress'};
+    list.innerHTML = chips.map(c => {
+      const label = CHIP_LABELS[c] || c.replace(/_/g,' ').replace(/\b\w/g,l=>l.toUpperCase());
+      return `<button onclick="chipSearch('${escHtml(c)}')" class="tag-pill hover:border-indigo-400 hover:text-indigo-700 transition">${escHtml(label)}</button>`;
+    }).join('');
+    container.classList.remove('hidden');
+  } catch { /* silently skip — chips are optional enhancement */ }
+}
+function chipSearch(trigger) {
+  const q = document.getElementById('question');
+  if (q) { q.value = 'What helps with ' + trigger.replace(/_/g,' ') + ' in children with autism?'; doSearch(); }
+}
+
 // ── Build source card ──────────────────────────────────────────────
 function buildSourceCard(r, rank) {
   const badgeCls = sourceBadgeClass(r.source);
-  const sourceLabel = r.source.charAt(0).toUpperCase()+r.source.slice(1);
+  const sourceLabel = r.source_name || r.source.charAt(0).toUpperCase()+r.source.slice(1);
   let authorLine='';
   if (r.authors_json&&r.authors_json.length>0) {
     const first=r.authors_json[0]; const name=first.family||first.name||'';
@@ -596,13 +889,16 @@ function buildSourceCard(r, rank) {
     ? r.description.slice(0,280)+(r.description.length>280?'…':'')
     : (r.content_body?r.content_body.slice(0,280)+'…':'');
   const scoreW=Math.round((r.combined_score||0)*100);
+  const chunkId = r.id || '';
   return `
-    <div id="source-${rank}" class="bg-white rounded-xl border border-gray-200 p-4 scroll-mt-20 hover:border-indigo-300 transition">
+    <div id="source-${rank}" data-chunk-id="${chunkId}" class="bg-white rounded-xl border border-gray-200 p-4 scroll-mt-20 hover:border-indigo-300 transition">
       <div class="flex items-start gap-3">
         <span class="flex-none mt-0.5 w-7 h-7 rounded-full bg-indigo-50 text-indigo-700 text-xs font-bold flex items-center justify-center border border-indigo-200">${rank}</span>
         <div class="flex-1 min-w-0">
           <div class="flex flex-wrap items-start gap-2 mb-1">
-            <span class="inline-flex items-center text-xs font-semibold px-2 py-0.5 rounded-full ${badgeCls}">${sourceLabel}</span>
+            <span class="inline-flex items-center text-xs font-semibold px-2 py-0.5 rounded-full ${badgeCls}">${escHtml(sourceLabel)}</span>
+            ${tierBadgeHtml(r.authority_tier)}
+            ${audienceBadgeHtml(r.audience_type)}
             ${r.open_access?`<span class="inline-flex items-center text-xs font-medium text-teal-700 bg-teal-50 border border-teal-200 rounded-full px-2 py-0.5">🔓 open access</span>`:''}
             ${r.doi?`<span class="text-xs text-gray-400 font-mono truncate max-w-xs">DOI: ${r.doi}</span>`:''}
           </div>
@@ -623,6 +919,7 @@ function buildSourceCard(r, rank) {
             <div class="score-bar-bg flex-1"><div class="score-bar-fill" style="width:${scoreW}%"></div></div>
             <span class="text-xs text-gray-400 tabular-nums w-8 text-right">${(r.combined_score||0).toFixed(2)}</span>
           </div>
+          ${chunkId?`<div class="mt-2"><button onclick="toggleTraceability(${rank},'${chunkId}')" id="trace-toggle-${rank}" role="button" tabindex="0" class="text-xs text-indigo-600 font-medium hover:text-indigo-800 cursor-pointer bg-transparent border-0">Show source details</button><div id="trace-panel-${rank}" class="hidden mt-2"></div></div>`:''}
         </div>
       </div>
     </div>`;
@@ -740,7 +1037,9 @@ function renderAnswerBlock(text, opts={}) {
   }
 
   if(confidence_level && confBadge) {
-    confBadge.innerHTML=confBadgeHtml(confidence_level);
+    const sourceCount = window._lastResultsCount || 0;
+    const countLabel = sourceCount > 0 ? `<span class="text-xs text-gray-500 ml-2">Based on ${sourceCount} source${sourceCount!==1?'s':''}</span>` : '';
+    confBadge.innerHTML = confBadgeHtml(confidence_level) + countLabel + '<div class="mt-2">' + confProgressHtml(confidence_level) + '</div>';
     confBadge.classList.remove('hidden');
   }
   if(personal_insight && personalSection) {
@@ -783,10 +1082,11 @@ function renderResults(data) {
   updateTimingBadge({search_time_ms,llm_time_ms,search_mode});
 }
 
-async function fallbackFetch(question, source, days, limit) {
+async function fallbackFetch(question, source, days, limit, audience) {
   const params=new URLSearchParams({q:question,limit});
   if(source) params.set('source',source);
   if(days) params.set('days',days);
+  if(audience) params.set('audience',audience);
   try {
     const resp=await fetch(API_BASE+'/api/search?'+params.toString());
     if(!resp.ok) {
@@ -808,13 +1108,15 @@ async function doSearch() {
   const source=document.getElementById('filter-source').value;
   const days=document.getElementById('filter-days').value;
   const limit=document.getElementById('filter-limit').value;
+  const audience=(document.getElementById('filter-audience')||{}).value||'';
   setLoading(true); resetUI();
   if(typeof EventSource==='undefined') {
-    await fallbackFetch(question,source,days,limit); setLoading(false); return;
+    await fallbackFetch(question,source,days,limit,audience); setLoading(false); return;
   }
   const params=new URLSearchParams({q:question,limit});
   if(source) params.set('source',source);
   if(days) params.set('days',days);
+  if(audience) params.set('audience',audience);
   showProgress();
   const es=new EventSource(`${API_BASE}/api/search/stream?${params}`);
   let streamGotResults=false, lastSearchTimeMs=null, lastSearchMode=null;
@@ -822,6 +1124,7 @@ async function doSearch() {
   es.addEventListener('results',(e)=>{
     const d=JSON.parse(e.data); streamGotResults=true;
     lastSearchTimeMs=d.search_time_ms; lastSearchMode=d.search_mode;
+    window._lastResultsCount = (d.results||[]).length;
     renderSourceCards(d.results);
   });
   es.addEventListener('agent_activity',(e)=>{ appendAgentLog(JSON.parse(e.data).message); });
@@ -841,7 +1144,7 @@ async function doSearch() {
   });
   es.addEventListener('error',()=>{
     es.close();
-    if(!streamGotResults) { fallbackFetch(question,source,days,limit).finally(()=>setLoading(false)); }
+    if(!streamGotResults) { fallbackFetch(question,source,days,limit,audience).finally(()=>setLoading(false)); }
     else {
       hideProgress(); setLoading(false);
       const ans=document.getElementById('answer-card');
@@ -864,6 +1167,8 @@ document.getElementById('ask-btn').disabled=true;
 const ALL_TABS=['search','log','insights','clinician'];
 
 function switchTab(name) {
+  // Cancel in-flight insights fetches when leaving the insights tab
+  if (name !== 'insights' && _insightsAbort) { _insightsAbort.abort(); _insightsAbort = null; }
   ALL_TABS.forEach(t=>{
     document.getElementById('panel-'+t).classList.toggle('hidden',t!==name);
     const btn=document.getElementById('tab-btn-'+t);
@@ -880,13 +1185,13 @@ function switchTab(name) {
 // LOAD TODAY'S EXISTING ENTRY INTO LOG FORM
 // ════════════════════════════════════════════════════════════════
 async function loadTodayEntry() {
-  const today = new Date().toISOString().slice(0, 10);
+  const today = localDateStr();
   try {
-    // Fetch most recent log entry from today
-    const logsResp = await fetch(COLLECT_API + '/logs?days=1&limit=50');
+    // Fetch recent log entries and pick only today's (local date)
+    const logsResp = await fetch(COLLECT_API + '/logs?days=2&limit=50');
     if (logsResp.ok) {
       const data = await logsResp.json();
-      const todayLog = (data.logs || []).find(l => (l.logged_at || '').startsWith(today));
+      const todayLog = (data.logs || []).find(l => l.logged_at && localDateStr(l.logged_at) === today);
       if (todayLog) {
         voiceLogId = todayLog.id;
         voiceLogDate = today;
@@ -1163,7 +1468,7 @@ async function submitCombined() {
   statusEl.classList.remove('hidden');
 
   const { ratings, hasRatings, notes: ciNotesVal } = collectRatings();
-  const logDate = voiceLogDate || new Date().toISOString().slice(0, 10);
+  const logDate = voiceLogDate || localDateStr();
 
   try {
     // ── Event log request ─────────────────────────────────────────
@@ -1233,6 +1538,7 @@ async function submitCombined() {
     }
 
     // ── Success ────────────────────────────────────────────────────
+    _insightsCacheValid = false;   // invalidate so Insights re-fetches with new data
     resetLogForm();
     showToast('Saved ✓');
     statusEl.classList.add('hidden');
@@ -1382,16 +1688,36 @@ function applyVoiceMapped(m) {
 // ════════════════════════════════════════════════════════════════
 // TAB 3 — INSIGHTS
 // ════════════════════════════════════════════════════════════════
+async function fetchInsightsWithFallback(refresh, signal) {
+  const qs = refresh ? '?refresh=true' : '';
+  try {
+    const resp = await fetch(API_BASE + '/api/insights/full' + qs, { signal });
+    if (resp.ok) return resp;
+  } catch(e) { if (e.name === 'AbortError') throw e; /* fall through to base endpoint */ }
+  return fetch(API_BASE + '/api/insights' + qs, { signal });
+}
+let _insightsCacheValid = false;
+let _insightsAbort = null;
 async function loadInsights(refresh=false) {
+  // Skip re-fetch if cache is still valid (no new log submitted) and not a forced refresh
+  if (!refresh && _insightsCacheValid) return;
+  // Cancel any in-flight insights request
+  if (_insightsAbort) _insightsAbort.abort();
+  _insightsAbort = new AbortController();
+  const signal = _insightsAbort.signal;
+
   document.getElementById('weekly-summary').innerHTML='<p class="text-xs text-gray-400">Loading…</p>';
   document.getElementById('insights-patterns').innerHTML='<p class="text-xs text-gray-400">Loading…</p>';
   document.getElementById('insights-error').classList.add('hidden');
 
-  const insightsUrl=API_BASE+'/api/insights'+(refresh?'?refresh=true':'');
+  try {
   const [weeklyResp, insightsResp] = await Promise.allSettled([
-    fetch(API_BASE+'/api/weekly-summary?child_id='+CHILD_ID+'&week_offset=0'),
-    fetch(insightsUrl),
+    fetch(API_BASE+'/api/weekly-summary?child_id='+CHILD_ID+'&week_offset=0', { signal }),
+    fetchInsightsWithFallback(refresh, signal),
   ]);
+
+  // If aborted after awaiting, stop processing results
+  if (signal.aborted) return;
 
   // Weekly summary
   if(weeklyResp.status==='fulfilled'&&weeklyResp.value.ok){
@@ -1405,6 +1731,7 @@ async function loadInsights(refresh=false) {
   if(insightsResp.status==='fulfilled'&&insightsResp.value.ok){
     try {
       const data=await insightsResp.value.json();
+      if (signal.aborted) return;
       renderPatternInsights(data);
       const metaEl=document.getElementById('insights-generated-at');
       if(metaEl&&data.generated_at){
@@ -1413,9 +1740,11 @@ async function loadInsights(refresh=false) {
       }
     }
     catch { document.getElementById('insights-patterns').innerHTML='<p class="text-xs text-gray-500">Could not display insights.</p>'; }
+    _insightsCacheValid = true;
   } else {
     document.getElementById('insights-patterns').innerHTML='<p class="text-xs text-gray-500">Not enough data yet — keep logging daily.</p>';
   }
+  } catch(e) { if (e.name !== 'AbortError') throw e; }
 }
 
 function refreshInsights() {
@@ -1450,27 +1779,26 @@ function renderPatternInsights(data) {
   const container=document.getElementById('insights-patterns');
   const topTriggers=data.top_triggers||[];
   const topOutcomes=data.top_outcomes||[];
-  const patterns=data.pattern_cards||[];
+  const patterns=data.patterns||data.pattern_cards||[];
   const effectiveness=data.intervention_effectiveness||[];
 
   const triggerRows=topTriggers.length
-    ? topTriggers.map((t,i)=>`<div class="flex items-center gap-2 text-sm py-1"><span class="text-gray-400 tabular-nums w-4">${i+1}</span><span class="flex-1 text-gray-700">${escHtml(typeof t==='string'?t:t.trigger||'')}</span>${t.count!==undefined?`<span class="text-xs text-gray-400">${t.count}×</span>`:''}</div>`).join('')
+    ? topTriggers.map((t,i)=>{
+        const trigger = typeof t==='string'?t:t.trigger||'';
+        const rawSigs = (t.raw_signals||[]).filter(s => s && s !== trigger);
+        const sigLabel = rawSigs.length ? ` <span class="text-xs text-red-500 font-medium">(${rawSigs.map(s=>escHtml(s)).join(', ')})</span>` : '';
+        const safetyBadge = t.is_safety ? '<span class="text-xs bg-red-100 text-red-700 px-1.5 py-0.5 rounded-full font-medium">safety</span>' : '';
+        return `<div class="flex items-center gap-2 text-sm py-1"><span class="text-gray-400 tabular-nums w-4">${i+1}</span><span class="flex-1 text-gray-700">${escHtml(trigger)}${sigLabel}</span>${safetyBadge}${t.count!==undefined?`<span class="text-xs text-gray-400">${t.count}×</span>`:''}</div>`;
+      }).join('')
     : '<p class="text-xs text-gray-500">No data yet.</p>';
 
   const outcomeRows=topOutcomes.length
     ? topOutcomes.map((o,i)=>`<div class="flex items-center gap-2 text-sm py-1"><span class="text-gray-400 tabular-nums w-4">${i+1}</span><span class="flex-1 text-gray-700">${escHtml(typeof o==='string'?o:o.outcome||'')}</span></div>`).join('')
     : '<p class="text-xs text-gray-500">No data yet.</p>';
 
-  const patternCards=patterns.map(p=>`
-    <div class="dl-card">
-      <div class="flex items-start justify-between gap-3">
-        <div>
-          <p class="text-sm font-semibold text-gray-800">${escHtml(p.trigger||'')} → ${escHtml(p.outcome||'')}</p>
-          <p class="text-xs text-gray-500 mt-0.5">Co-occurrence: ${p.co_occurrence_pct||0}% · ${p.sample_count||0} samples</p>
-        </div>
-        ${confBadgeHtml(p.confidence_level)}
-      </div>
-    </div>`).join('');
+  const patternCards=patterns.length>0
+    ? patterns.map((p,i) => buildInsightCard(p,i)).join('')
+    : '<p class="text-xs text-gray-500">Not enough data yet — keep logging daily to detect behavioral patterns.</p>';
 
   const effRows=effectiveness.length
     ? effectiveness.map(e=>`<tr class="border-t border-gray-100"><td class="py-1.5 pr-3 text-gray-700">${escHtml(e.intervention||'')}</td><td class="py-1.5 text-center text-gray-600">${e.before_rate??'—'}</td><td class="py-1.5 text-center text-gray-600">${e.after_rate??'—'}</td><td class="py-1.5 text-center font-semibold ${(e.delta||0)<0?'text-green-700':'text-red-600'}">${e.delta!=null?(e.delta>0?'+':'')+e.delta:'—'}</td></tr>`).join('')
@@ -1486,7 +1814,7 @@ function renderPatternInsights(data) {
         <div class="dl-section-title">📈 Top Outcomes</div>
         ${topOutcomes.length===0?'<p class="text-xs text-gray-500">No data yet.</p>':outcomeRows}
       </div>
-      ${patterns.length>0?`<div class="space-y-3"><div class="text-sm font-semibold text-gray-700 mb-1">🧩 Detected Patterns</div>${patternCards}</div>`:''}
+      <div class="space-y-3"><div class="text-sm font-semibold text-gray-700 mb-1">🧩 Behavioral Insights</div>${patternCards}</div>
       <div class="dl-card">
         <div class="dl-section-title">💡 Intervention Effectiveness</div>
         <table class="w-full text-xs">
@@ -1638,6 +1966,12 @@ document.addEventListener('DOMContentLoaded',function(){
     .then(r=>r.json())
     .then(d=>{ document.getElementById('stats-badge').textContent=(d.total_items||0).toLocaleString()+' items indexed'; })
     .catch(()=>{ document.getElementById('stats-badge').textContent='— items indexed'; });
+
+  // Initialize audience toggle from localStorage (P4)
+  initAudienceToggle();
+
+  // Load trigger suggestion chips (P5)
+  loadTriggerChips();
 
   // Health dot
   fetch(API_BASE+'/api/health')

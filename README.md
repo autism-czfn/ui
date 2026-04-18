@@ -4,7 +4,91 @@
 
 ---
 
-## 最新更新 / Latest Changes (2026-04-15)
+## 最新更新 / Latest Changes (2026-04-17)
+
+本次更新实现了 plan.txt UI Section 中 Phase 1–3 的绝大部分优先项（P1–P5、P7），将搜索面板从简单结果列表升级为具备来源可信度、证据追溯、受众切换和行为洞察的综合信息工作台。
+
+### P1.1 — Source Attribution Badges（来源可信度徽章）
+
+- 卡片标签优先显示 `source_name`（如 "National Institutes of Health"），无则回退平台名。
+- Authority Tier 徽章：🟢 Official (Tier 1) / 🔵 Academic (Tier 2) / ⚪ Verified Nonprofit (Tier 3)。
+- Audience Type 徽章：🟣 Parent Guide / 🟠 Clinical Reference。
+- 所有新字段均可选，后端未部署前显示与此前一致。
+
+### P1.2 — Evidence Traceability Panel（证据追溯面板）
+
+- 每张搜索结果卡片存储 `data-chunk-id`，底部新增 "Show source details" 按钮。
+- 点击后 lazy-fetch `GET /api/evidence/{chunk_id}`，展开内联详情：页面标题、引文块引、信任徽章、"View full source" 外链。
+- 点击引用上标 `[N]` 时自动滚动到对应卡片并展开追溯面板。
+- 若 API 返回失败，优雅降级显示 "Source details unavailable" + 原始链接。
+
+### P2 — Confidence & Evidence Strength（置信度与证据强度）
+
+- 搜索摘要卡片新增置信度进度条（`confProgressHtml`）：Strong 90% 绿 / Moderate 50% 黄 / Limited 15% 灰。
+- 新增 "Based on N sources" 标注，数量取自 `results` SSE 事件的 `results.length`。
+
+### P3 — Source List Modal（来源列表弹窗）
+
+- 顶部导航栏新增 "ℹ️ Sources" 按钮，点击打开全屏遮罩弹窗。
+- 弹窗从 `GET /api/sources` 拉取数据，按 Tier 1/2/3 分组展示来源名、国家、语言。
+- 顶部静态说明解释三级信任体系。
+- 加载失败时显示错误提示 + 重试按钮。
+
+### P4 — Audience Toggle（受众模式切换）
+
+- 搜索过滤器新增 "Audience" 下拉：Parent Mode / Clinical Mode。
+- 选择自动存入 `localStorage`，刷新后保持。
+- 切换时若当前已有搜索结果，自动以新 `?audience=` 参数重新搜索。
+- 同时传递给 SSE 流式搜索和非流式 fallback。
+
+### P5 — Trigger-Based Search Suggestions（触发因素快捷搜索）
+
+- 搜索面板新增 trigger chips 区域，优先展示近 7 天用户自身日志的 top triggers。
+- 若无个人数据，回退到 `GET /triggers/vocabulary`（collect API）或内置默认词列表。
+- 点击 chip 自动填入 "What helps with {trigger} in children with autism?" 并立即搜索。
+
+### P7 — Insights Tab Redesign（洞察标签页重构）
+
+- **API 升级**：`loadInsights()` 优先请求 `GET /api/insights/full`（含 evidence + recommendations），404/500 时自动回退到基础 `/api/insights`。
+- **4 层洞察卡片**（`buildInsightCard`）：
+  - Layer 1 — 摘要行：`trigger → outcome` + 置信度徽章 + co-occurrence 百分比。
+  - Layer 2 — 个人数据：靛蓝色框，显示 "Observed in X out of Y episodes (Z%)" + 样本数。
+  - Layer 3 — 外部证据（默认折叠）：`toggleEvidence()` 展开/收起，每条证据渲染为 `buildEvidenceCard`（📘 组织名 + 置信标签 + 摘要 + 外链）。
+  - Layer 4 — 推荐行动：✓ 列表，无数据时整层隐藏。
+- **Top Triggers 增强**：显示 `raw_signals`（红色）和 `is_safety` 安全徽章。
+- **空态处理**：无 pattern 时提示 "Not enough data yet — keep logging daily…"。
+- **打印支持**：`@media print` 自动展开所有 evidence-panel。
+
+### Bug Fixes & Improvements
+
+- **时区修复**：新增 `localDateStr()` 工具函数，`loadTodayEntry()` 和 `submitCombined()` 改用本地日期（非 UTC），修复跨午夜时日志匹配不到的问题。日志查询范围从 `days=1` 扩大到 `days=2` 以覆盖边界情况。
+- **Insights 缓存**：新增 `_insightsCacheValid` 标志，提交日志后自动失效；切换标签页时 `AbortController` 取消进行中的请求，防止竞态。
+- **Patterns 字段兼容**：`renderPatternInsights` 同时接受 `data.patterns` 和 `data.pattern_cards`。
+
+### 变更文件
+
+| 文件 | 变更 |
+|---|---|
+| `index.html` | +224 行新增功能代码：P1.2 追溯面板、P2 置信度条、P3 来源弹窗、P4 受众切换、P5 trigger chips、P7 洞察卡片重构；搜索流增加 audience 参数；时区修复；insights 缓存 |
+
+### 依赖的后端变更
+
+| 后端 API | 对应 UI 功能 | 状态 |
+|---|---|---|
+| Search P1.4: `source_name`, `authority_tier`, `audience_type` 字段 | P1.1 徽章 | 未部署（UI 已向后兼容） |
+| Search P3: `GET /api/evidence/{chunk_id}` | P1.2 追溯面板 | 未部署（UI 优雅降级） |
+| Search P1.4: `GET /api/sources` | P3 来源弹窗 | 未部署（UI 显示重试） |
+| Search API: `?audience=` 参数 | P4 受众切换 | 未部署（参数已传递） |
+| Collect API: `GET /triggers/vocabulary` | P5 trigger chips | 未部署（UI 回退默认词） |
+| Search P8: `GET /api/insights/full` | P7 洞察卡片 L3+L4 | 未部署（UI 回退基础端点） |
+
+---
+
+### 此前更新 / Previous Changes (2026-04-16)
+
+Source Attribution Badges (P1.1) 首次实现 — 搜索结果卡片新增来源可信度标识。
+
+### 此前更新 / Previous Changes (2026-04-15)
 
 今日共 4 次提交，核心是将 UI 从「搜索 + 日志」升级为一站式「Autism Support」多标签工作台。
 
@@ -106,18 +190,22 @@ UI 层本身不含任何搜索逻辑，所有搜索与 AI 摘要均由 `autism-s
 
 ```
 ┌─────────────────────────────────────────┐
-│  🧩 Autism Q&A        ● N items indexed │  ← 顶部导航栏
+│  🧩 Autism Support   ● N indexed ℹ️Src │  ← 导航栏 + Sources 弹窗入口
+│  [Search] [Log Today] [Insights] [Clin] │  ← 标签页
 ├─────────────────────────────────────────┤
 │  搜索框 + [Search] 按钮                  │  ← 问题输入
-│  ▸ Filters（来源 / 时间 / 数量）         │  ← 折叠过滤器
+│  ▸ Filters（来源/时间/数量/受众）        │  ← 折叠过滤器（含 Audience 切换）
+│  [Noise] [Sleep] [Transitions] …        │  ← Trigger chips 快捷搜索
 ├─────────────────────────────────────────┤
-│  Answer                                 │  ← LLM 摘要（含引用标注）
-│  早期自闭症迹象包括… [1][3]              │
+│  Answer            Strong evidence ██▓░ │  ← LLM 摘要 + 置信度条
+│  早期自闭症迹象包括… [1][3]              │  ← Based on N sources
 ├─────────────────────────────────────────┤
 │  Sources                                │  ← 搜索结果卡片
 │  [1] Reddit  "Signs my son was…"        │
-│  [2] PubMed  "Early markers of ASD…"   │
+│  [2] PubMed 🟢Official 🟣Parent Guide  │  ← 信任+受众徽章
+│      "Early markers of ASD…"            │
 │      Smith et al. · 2023 · 🔓 open     │
+│      [Show source details]              │  ← 追溯面板（lazy-fetch）
 │  …                                      │
 ├─────────────────────────────────────────┤
 │  hybrid · search 0.24s · answer 1.2s   │  ← 底部统计
@@ -140,6 +228,7 @@ UI 层本身不含任何搜索逻辑，所有搜索与 AI 摘要均由 `autism-s
 | 来源（Source） | 按数据来源筛选，如 Reddit、PubMed、Europe PMC 等 16 种 |
 | 时间（Time） | 最近 30 天 / 90 天 / 1 年 / 不限 |
 | 数量（Results） | 返回前 10 / 20 / 50 条结果 |
+| 受众（Audience） | Parent Mode（家长模式）/ Clinical Mode（临床模式），选择存入 localStorage |
 
 过滤器默认折叠，点击展开，使用 HTML 原生 `<details>` 元素，无需 JavaScript。
 
@@ -156,6 +245,18 @@ UI 层本身不含任何搜索逻辑，所有搜索与 AI 摘要均由 `autism-s
 | RSS / Spectrum News | 绿色 |
 | ClinicalTrials.gov | 红色 |
 | Wikipedia | 灰蓝色 |
+
+### 信任等级 & 受众徽章
+
+搜索结果卡片可显示额外的可信度与受众标识（需后端 Search P1.4 支持）：
+
+| 徽章类型 | 值 | 颜色 |
+|---|---|---|
+| Authority Tier 1 | Official Source | 绿色 |
+| Authority Tier 2 | Academic Source | 蓝色 |
+| Authority Tier 3 | Verified Nonprofit | 灰色 |
+| Audience: parent_facing | Parent Guide | 紫色 |
+| Audience: clinician_facing | Clinical Reference | 琥珀色 |
 
 ### 错误处理
 
