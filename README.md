@@ -4,7 +4,92 @@
 
 ---
 
-## 最新更新 / Latest Changes (2026-04-17)
+## 最新更新 / Latest Changes (2026-04-19)
+
+本次更新新增了 Settings 标签页、Service Worker 离线缓存、音频快速日志确认流程、改进的错误处理、历史日志翻页等 5 项功能（P-UI-1 ～ P-UI-4, P-UI-7），并包含多项 Bug 修复。
+
+### P-UI-1 — Settings Tab（设置标签页）
+
+- 导航栏新增 ⚙️ **Settings** 标签页（第 5 个标签）。
+- **Child Information** 卡片：可设置孩子显示名（`child_display_name`）。
+- **Preferences** 卡片：可选择时区（完整 IANA 列表）和界面语言（9 种）。
+- 设置通过 `POST /collect/user-settings` 持久化到服务器；同时写入 `localStorage` 作为离线缓存。
+- 离线时显示 "Offline mode" 横幅，提交失败时将待同步数据存入 `localStorage.settings_pending`。
+- 页面启动时自动调用 `loadSettings()`，将已保存的受众模式（`audience_mode`）从独立 localStorage 键迁移至 `ui_preferences`。
+
+### P-UI-2 — Service Worker / Offline Support（Service Worker 离线支持）
+
+- 新增 `sw.js`，实现分层缓存策略：
+  - **CDN 资源**（Tailwind、marked.js、DOMPurify）：Cache First，安装时预缓存。
+  - **`index.html`**：Network First，网络失败时回退缓存。
+  - **`/api/search`、`/api/insights*`、`/api/weekly-summary`**：Network First，最多缓存最近 5 条搜索响应；离线时响应头携带 `X-Served-From: cache`。
+  - **SSE 流（`/api/search/stream`）、写操作（`/collect/*`）、证据/来源/统计 API**：Network Only，永不缓存。
+- 页面加载后通过 `navigator.serviceWorker.register('/sw.js')` 静默注册（失败不影响功能）。
+
+### P-UI-3 — Audio Quick Log with Confirmation（音频快速日志确认流程）
+
+- Log Today 标签新增 "🎙 Audio Quick Log" 卡片。
+- 录音完成后，展示 **Review & Confirm** 确认表单：
+  - 原始转录文本（只读展示）
+  - 触发类型下拉（必填）
+  - 严重程度滑条（1–5）
+  - 情境与结果提示输入框
+  - 提取置信度展示（trigger / severity / overall 百分比）
+  - 警告区域（自动填充低置信提示）
+- 点击 "✅ Confirm & Save" 调用 `POST /collect/logs` 保存事件；Cancel 隐藏表单。
+
+### P-UI-4 — Improved Error Handling（改进错误处理）
+
+- 新增 `createTimeoutSignal(ms)` 工具函数，为所有 `fetch` 调用附加 30 秒超时 `AbortController`。
+- 新增 `classifyFetchError(err, status)` 函数，区分四种错误场景：
+  - 离线 / `Failed to fetch` → "You're offline. Check your connection and try again."
+  - `AbortError` → "Request timed out. Please try again."
+  - HTTP 5xx → "Server error (N). Try again in a moment."
+  - HTTP 4xx → "Request failed (N). Please reload and try again."
+- `fallbackFetch`、`confirmAudioLog`、`loadLogsHistory` 等关键路径均已接入。
+
+### P-UI-7 — Past Logs History（历史日志翻页）
+
+- Log Today 底部新增 "📋 Past Logs" 卡片，展示当天以前的所有日志。
+- 每页 20 条，使用 `GET /collect/logs?limit=20&offset=N&days=3650` 拉取，自动过滤当天条目。
+- `buildLogCard` 渲染：日期、严重程度色标（绿/黄/红）、触发类型 chip、事件摘要、情境文本。
+- "Load more" 按钮追加加载；全部加载完毕显示 "All logs loaded."
+
+### Bug Fixes & Improvements
+
+- **字段名修正**：Evidence 卡片与 Traceability 面板的 `organization_name` 字段改为 `source_name`，与后端保持一致。
+- **共现率精度修正**：`buildInsightCard` 中 `co_occurrence_pct` 现在乘以 100 并保留 1 位小数（`(val*100).toFixed(1)%`）。
+- **证据来源细分标签**：Insight 卡片 Layer 3 显示 "X database · Y live · searched Z websites" 明细。
+- **安全横幅升级**：`safety-banner` 改为顶部固定横幅（`position:fixed`）+ 内联紧急帮助说明（911 / 988 / 急诊）。
+- **周报标题**："This Week at a Glance" 改为 "Past 7 Days at a Glance"。
+- **Insights 时间戳**：`generated_at` 由 "X ago" 改为格式化时间戳（如 "Apr 19, 10:30 AM"）。
+- **Insights 错误处理**：网络错误时通过 `showBanner` 显示具体错误信息，而非静默失败。
+- **Top Triggers 日期范围**：标题新增 "(from – to)" 日期范围显示。
+- **来源计数标签**：`renderSourceCards` 升级为 async，从 `/api/sources` 拉取并展示 "N crawled + M live sources · showing top K"。
+- **Insights API child_id 参数**：`fetchInsightsWithFallback` 和 trigger chips 的 insights 请求均附加 `child_id` 参数。
+- **启动优化**：`DOMContentLoaded` 时预调用 `getSourceCounts()`、`populateTimezones()`、`loadSettings()`。
+- **打印支持**：`@media print` 规则新增 `[id^="evidence-panel-"] { display:block !important; }`，打印时自动展开所有证据面板。
+- **Insights 刷新按钮**：旁边新增 "🖨 Print report" 按钮（`window.print()`）。
+
+### 变更文件
+
+| 文件 | 变更 |
+|---|---|
+| `index.html` | 新增 Settings 标签页、Audio Quick Log 确认流程、Past Logs 翻页、Service Worker 注册、错误处理工具函数；多项 bug 修复 |
+| `sw.js` | 新文件，分层 Service Worker 缓存（P-UI-2） |
+
+### 依赖的后端变更
+
+| 后端 API | 对应 UI 功能 | 状态 |
+|---|---|---|
+| `POST /collect/user-settings` | P-UI-1 Settings 保存 | 需部署 |
+| `GET /collect/user-settings` | P-UI-1 Settings 加载 | 需部署 |
+| `GET /collect/logs?offset=&days=3650` | P-UI-7 历史日志翻页 | 需部署 |
+| `GET /collect/logs?offset=` param | P-UI-7 Load more | 需部署 |
+
+---
+
+## 此前更新 / Previous Changes (2026-04-17)
 
 本次更新实现了 plan.txt UI Section 中 Phase 1–3 的绝大部分优先项（P1–P5、P7），将搜索面板从简单结果列表升级为具备来源可信度、证据追溯、受众切换和行为洞察的综合信息工作台。
 
