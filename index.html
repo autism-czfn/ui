@@ -83,6 +83,7 @@
     <button id="tab-btn-log"       onclick="switchTab('log')"       class="tab-btn tab-btn-inactive  flex-none px-4 py-3 text-sm -mb-px transition cursor-pointer bg-transparent border-0">📋 Log Today</button>
     <button id="tab-btn-insights"  onclick="switchTab('insights')"  class="tab-btn tab-btn-inactive  flex-none px-4 py-3 text-sm -mb-px transition cursor-pointer bg-transparent border-0">📊 Insights</button>
     <button id="tab-btn-clinician" onclick="switchTab('clinician')" class="tab-btn tab-btn-inactive  flex-none px-4 py-3 text-sm -mb-px transition cursor-pointer bg-transparent border-0">🏥 Clinician</button>
+    <button id="tab-btn-settings"  onclick="switchTab('settings')"  class="tab-btn tab-btn-inactive  flex-none px-4 py-3 text-sm -mb-px transition cursor-pointer bg-transparent border-0">⚙️ Settings</button>
   </div>
 </div>
 
@@ -429,6 +430,67 @@
     <p id="dl-record-status" class="text-xs text-gray-400 mt-2 text-center"></p>
   </div>
 
+  <!-- Audio Quick Log with confirmation (P-UI-3) -->
+  <div class="dl-card">
+    <div class="dl-section-title">🎙 Audio Quick Log</div>
+    <p class="text-xs text-gray-500 mb-3">Record a single event, review the extraction, then save.</p>
+    <button id="audio-log-btn" onclick="startAudioLog()"
+            class="dl-btn-secondary w-full justify-center py-3 text-sm font-semibold border-indigo-300 text-indigo-700 hover:bg-indigo-50">
+      🎙 Start recording
+    </button>
+    <p id="audio-log-status" class="text-xs text-gray-400 mt-2 text-center"></p>
+    <p id="transcribe-error" class="hidden text-xs text-red-600 mt-1 text-center"></p>
+  </div>
+
+  <!-- Confirmation form shown after transcription (P-UI-3) -->
+  <div id="audio-confirm-section" class="hidden dl-card space-y-4">
+    <div class="dl-section-title">✏️ Review &amp; Confirm</div>
+    <div class="bg-gray-50 rounded-xl border border-gray-200 p-3">
+      <p class="text-xs font-semibold text-gray-500 mb-1">What you said (read-only):</p>
+      <p id="audio-raw-text" class="text-sm text-gray-700 italic leading-relaxed"></p>
+    </div>
+    <div id="audio-warnings" class="hidden bg-amber-50 border border-amber-200 rounded-xl p-3 text-xs text-amber-800 space-y-1"></div>
+    <div>
+      <label class="text-xs font-semibold text-gray-600 block mb-1">Trigger type <span class="text-red-500">*</span></label>
+      <select id="audio-trigger-type" class="dl-input"></select>
+    </div>
+    <div>
+      <label class="text-xs font-semibold text-gray-600 flex justify-between mb-1">
+        <span>Severity <span class="text-red-500">*</span></span>
+        <span class="font-normal text-gray-400">1=mild · 5=severe</span>
+      </label>
+      <div class="flex items-center gap-3">
+        <input type="range" id="audio-severity" min="1" max="5" value="3"
+               oninput="document.getElementById('audio-severity-val').textContent=this.value"
+               class="flex-1 accent-indigo-600" />
+        <span id="audio-severity-val" class="text-sm font-bold text-indigo-600 w-4 text-center">3</span>
+      </div>
+    </div>
+    <div>
+      <label class="text-xs font-semibold text-gray-600 block mb-1">Context</label>
+      <input type="text" id="audio-context" class="dl-input" placeholder="Where, when, what was happening…" />
+    </div>
+    <div>
+      <label class="text-xs font-semibold text-gray-600 block mb-1">Outcome hint</label>
+      <input type="text" id="audio-outcome-hint" class="dl-input" placeholder="How did it resolve?" />
+    </div>
+    <div class="text-xs text-gray-500 bg-gray-50 rounded-xl p-3">
+      <p class="font-semibold text-gray-600 mb-1">Extraction confidence (display only)</p>
+      <div id="audio-confidence" class="flex flex-wrap gap-3"></div>
+    </div>
+    <p id="audio-confirm-error" class="hidden text-xs text-red-600"></p>
+    <div class="flex gap-2">
+      <button onclick="confirmAudioLog()" id="audio-confirm-btn"
+              class="flex-1 py-3 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-xl text-sm transition flex items-center justify-center gap-2">
+        ✅ Confirm &amp; Save
+      </button>
+      <button onclick="cancelAudioLog()"
+              class="py-3 px-4 border border-gray-300 rounded-xl text-sm text-gray-600 hover:border-gray-400 transition">
+        Cancel
+      </button>
+    </div>
+  </div>
+
   <!-- Intervention tracking -->
   <div class="dl-card">
     <div class="dl-section-title">🎯 Open Interventions</div>
@@ -444,6 +506,20 @@
   </button>
   <div id="log-submit-status" class="hidden text-center text-sm pb-4"></div>
 
+  <!-- Past Logs history (P-UI-7) — requires collect offset param -->
+  <div class="dl-card mt-2">
+    <div class="dl-section-title">📋 Past Logs</div>
+    <div id="logs-history-list" class="space-y-2 min-h-[2rem]">
+      <p class="text-xs text-gray-400">Loading…</p>
+    </div>
+    <p id="logs-history-empty" class="hidden text-xs text-gray-500 text-center py-2">No past logs.</p>
+    <p id="logs-history-end" class="hidden text-xs text-gray-400 text-center py-2 mt-2">All logs loaded.</p>
+    <button id="logs-load-more" onclick="loadMoreLogs()"
+            class="hidden mt-3 w-full dl-btn-secondary text-xs justify-center">
+      Load more
+    </button>
+  </div>
+
 </main>
 </div><!-- /panel-log -->
 
@@ -457,12 +533,15 @@
 
   <div class="flex items-center justify-between no-print">
     <span id="insights-generated-at" class="text-xs text-gray-400"></span>
-    <button onclick="refreshInsights()" class="dl-btn-secondary text-xs">↻ Refresh</button>
+    <div class="flex gap-2">
+      <button onclick="refreshInsights()" class="dl-btn-secondary text-xs">↻ Refresh</button>
+      <button id="btn-print-report" onclick="window.print()" class="dl-btn-secondary text-xs">🖨 Print report</button>
+    </div>
   </div>
 
   <!-- Weekly summary -->
   <div class="dl-card">
-    <div class="dl-section-title">📅 This Week at a Glance</div>
+    <div class="dl-section-title">📅 Past 7 Days at a Glance</div>
     <div id="weekly-summary"><p class="text-xs text-gray-400">Loading…</p></div>
   </div>
 
@@ -498,6 +577,73 @@
 
 </main>
 </div><!-- /panel-clinician -->
+
+<!-- ════════════════════════════════════════════════════════════════
+     PANEL 5 — SETTINGS  (P-UI-1)
+     ════════════════════════════════════════════════════════════════ -->
+<div id="panel-settings" class="hidden">
+<main class="max-w-3xl mx-auto px-4 py-6 space-y-4">
+
+  <!-- Offline / error banner -->
+  <div id="settings-error" class="hidden"></div>
+
+  <!-- Offline mode banner (shown when operating from localStorage cache) -->
+  <div id="settings-offline-banner" class="hidden bg-amber-50 border border-amber-200 rounded-xl px-4 py-3 text-sm text-amber-800">
+    Offline mode — changes will sync when you reconnect.
+  </div>
+
+  <!-- Child info card -->
+  <div class="dl-card space-y-4">
+    <div class="dl-section-title">👶 Child Information</div>
+
+    <div>
+      <label class="text-xs font-semibold text-gray-600 block mb-1">Child display name</label>
+      <input type="text" id="settings-child-name" class="dl-input"
+             placeholder="e.g. Alex" maxlength="80" />
+    </div>
+  </div>
+
+  <!-- Caregiver preferences card -->
+  <div class="dl-card space-y-4">
+    <div class="dl-section-title">🌍 Preferences</div>
+
+    <div>
+      <label class="text-xs font-semibold text-gray-600 block mb-1">Timezone</label>
+      <select id="settings-timezone" class="dl-input">
+        <option value="">— select —</option>
+      </select>
+    </div>
+
+    <div>
+      <label class="text-xs font-semibold text-gray-600 block mb-1">Preferred language</label>
+      <select id="settings-language" class="dl-input">
+        <option value="en">English</option>
+        <option value="zh">中文 (Chinese)</option>
+        <option value="es">Español (Spanish)</option>
+        <option value="fr">Français (French)</option>
+        <option value="de">Deutsch (German)</option>
+        <option value="ja">日本語 (Japanese)</option>
+        <option value="ko">한국어 (Korean)</option>
+        <option value="pt">Português (Portuguese)</option>
+        <option value="ar">العربية (Arabic)</option>
+      </select>
+    </div>
+  </div>
+
+  <!-- Save button -->
+  <button id="settings-save-btn" onclick="saveSettings()"
+          class="w-full py-4 bg-indigo-600 hover:bg-indigo-700 text-white font-bold
+                 rounded-2xl text-base transition flex items-center justify-center gap-2 shadow-sm">
+    Save Settings ✅
+  </button>
+  <p id="settings-save-status" class="hidden text-center text-sm"></p>
+
+  <p class="text-xs text-gray-400 text-center">
+    Settings are saved to the server and available on all devices.
+  </p>
+
+</main>
+</div><!-- /panel-settings -->
 
 <!-- ── Sources Modal (P3) ──────────────────────────────────────── -->
 <div id="sources-modal" class="modal-overlay hidden" onclick="if(event.target===this)closeSourcesModal()">
@@ -630,6 +776,20 @@ function showToast(msg, duration=2500) {
   t._timer = setTimeout(() => { t.style.opacity = '0'; }, duration);
 }
 
+// ── Timeout signal helper (P-UI-4) ────────────────────────────────
+function createTimeoutSignal(ms=30000){
+  const c=new AbortController();
+  setTimeout(()=>c.abort(),ms);
+  return c.signal;
+}
+function classifyFetchError(err,status){
+  if(!navigator.onLine||err.message==='Failed to fetch') return 'You\'re offline. Check your connection and try again.';
+  if(err.name==='AbortError') return 'Request timed out. Please try again.';
+  if(status>=500) return `Server error (${status}). Try again in a moment.`;
+  if(status>=400) return `Request failed (${status}). Please reload and try again.`;
+  return err.message||'An unexpected error occurred.';
+}
+
 // ── Loading button state ───────────────────────────────────────────
 let slowTimer = null;
 function setLoading(on) {
@@ -676,7 +836,7 @@ function buildEvidenceCard(card) {
       <span class="text-base flex-none">📘</span>
       <div class="flex-1 min-w-0">
         <div class="flex items-center gap-2 flex-wrap">
-          <span class="text-xs font-semibold text-gray-800">${escHtml(card.organization_name||'')}</span>
+          <span class="text-xs font-semibold text-gray-800">${escHtml(card.source_name||'')}</span>
           ${card.publication_type?`<span class="text-xs text-gray-400">· ${escHtml(card.publication_type)}</span>`:''}
           ${confTag}
         </div>
@@ -695,7 +855,7 @@ const INSIGHT_SUBTITLE = {
   insufficient_data: 'Pattern observed (limited data)',
 };
 function buildInsightCard(p, index) {
-  const subtitle = (INSIGHT_SUBTITLE[p.confidence_level] || 'Pattern observed') + ' · ' + (p.co_occurrence_pct||0) + '% co-occurrence';
+  const subtitle = (INSIGHT_SUBTITLE[p.confidence_level] || 'Pattern observed') + ' · ' + ((p.co_occurrence_pct||0)*100).toFixed(1) + '% co-occurrence';
   const evidence = p.evidence || [];
   const recs = p.recommendations || [];
 
@@ -703,12 +863,22 @@ function buildInsightCard(p, index) {
   let layer3 = '';
   if (evidence.length > 0) {
     const cards = evidence.map(c => buildEvidenceCard(c)).join('');
+    const crawledEvidence    = evidence.filter(c => !c.is_live_result).length;
+    const liveEvidence       = evidence.filter(c =>  c.is_live_result).length;
+    const liveSitesSearched  = p.live_sites_searched || 0;
+    const sitesLabel         = liveSitesSearched > 0 ? ` · searched ${liveSitesSearched} websites` : '';
+    const breakdownLabel     = (crawledEvidence > 0 || liveEvidence > 0)
+      ? `${crawledEvidence} database · ${liveEvidence} live${sitesLabel}`
+      : '';
     layer3 = `<div class="mt-3">
-      <button id="evidence-toggle-${index}" onclick="toggleEvidence(${index})" role="button" tabindex="0"
-              onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();toggleEvidence(${index})}"
-              class="text-xs text-indigo-600 font-medium hover:text-indigo-800 cursor-pointer bg-transparent border-0">
-        📘 View sources (${evidence.length})
-      </button>
+      <div class="flex items-center justify-between">
+        <button id="evidence-toggle-${index}" onclick="toggleEvidence(${index})" role="button" tabindex="0"
+                onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();toggleEvidence(${index})}"
+                class="text-xs text-indigo-600 font-medium hover:text-indigo-800 cursor-pointer bg-transparent border-0">
+          📘 View sources (${evidence.length})
+        </button>
+        ${breakdownLabel ? `<span class="text-xs text-gray-400">${breakdownLabel}</span>` : ''}
+      </div>
       <div id="evidence-panel-${index}" class="hidden mt-2 space-y-2">${cards}</div>
     </div>`;
   }
@@ -733,7 +903,7 @@ function buildInsightCard(p, index) {
     </div>
     <div class="mt-3 bg-indigo-50 rounded-lg p-3">
       <p class="text-xs font-semibold text-indigo-600 mb-1">Your child's data</p>
-      <p class="text-sm text-gray-700">Observed in ${p.co_occurrence_count||0} out of ${p.total_trigger_events||0} recorded ${escHtml(p.trigger||'')} episodes (${p.co_occurrence_pct||0}%)</p>
+      <p class="text-sm text-gray-700">Observed in ${p.co_occurrence_count||0} out of ${p.total_trigger_events||0} recorded ${escHtml(p.trigger||'')} episodes (${((p.co_occurrence_pct||0)*100).toFixed(1)}%)</p>
       <p class="text-xs text-gray-500 mt-1">Based on ${p.sample_count||0} samples</p>
     </div>
     ${layer3}
@@ -770,7 +940,7 @@ async function toggleTraceability(rank, chunkId) {
     const d = await resp.json();
     panel.innerHTML = `<div class="bg-gray-50 rounded-lg border border-gray-200 p-3 space-y-2">
       <p class="text-sm font-semibold text-gray-800">${escHtml(d.page_title||'')}</p>
-      ${d.organization_name ? `<div class="flex items-center gap-2">${tierBadgeHtml(d.authority_tier)}<span class="text-xs text-gray-500">${escHtml(d.organization_name)}</span></div>` : ''}
+      ${d.source_name ? `<div class="flex items-center gap-2">${tierBadgeHtml(d.authority_tier)}<span class="text-xs text-gray-500">${escHtml(d.source_name)}</span></div>` : ''}
       <blockquote class="text-xs text-gray-600 leading-relaxed border-l-2 border-indigo-300 pl-3 italic">${escHtml(d.snippet||'')}</blockquote>
       ${d.page_url ? `<a href="${d.page_url}" target="_blank" rel="noopener noreferrer" class="inline-flex items-center gap-1 text-xs text-indigo-600 hover:text-indigo-800 font-medium">View full source <span>↗</span></a>` : ''}
     </div>`;
@@ -785,6 +955,22 @@ async function toggleTraceability(rank, chunkId) {
     panel.classList.remove('hidden');
     btn.textContent = 'Hide source details';
   }
+}
+
+// ── Trusted source counts (fetched once, used in search results header) ──
+let _sourceCounts = null;  // { crawled: N, live: N }
+async function getSourceCounts() {
+  if (_sourceCounts !== null) return _sourceCounts;
+  try {
+    const resp = await fetch(API_BASE + '/api/sources');
+    if (!resp.ok) throw new Error();
+    const sources = (await resp.json()).sources || [];
+    _sourceCounts = {
+      crawled: sources.filter(s => s.access_mode !== 'live_search').length,
+      live:    sources.filter(s => s.access_mode === 'live_search').length,
+    };
+  } catch { _sourceCounts = { crawled: 0, live: 0 }; }
+  return _sourceCounts;
 }
 
 // ── Sources modal (P3) ────────────────────────────────────────────
@@ -852,7 +1038,7 @@ async function loadTriggerChips() {
     // Load recent triggers from user's logs
     let recentTriggers = [];
     try {
-      const lr = await fetch(API_BASE + '/api/insights?days=7');
+      const lr = await fetch(API_BASE + '/api/insights?child_id=' + CHILD_ID + '&days=7');
       if (lr.ok) { const d = await lr.json(); recentTriggers = (d.top_triggers||[]).slice(0,5).map(t => typeof t==='string'?t:t.trigger||''); }
     } catch {}
     const chips = recentTriggers.length > 0 ? recentTriggers
@@ -954,9 +1140,19 @@ function resetUI() {
       <div id="agent-log" class="hidden mt-3 text-xs text-gray-500 space-y-1 border-l-2 border-indigo-200 pl-3"></div>
     </div>
 
-    <div id="safety-banner" class="hidden mb-4 bg-red-50 border-l-4 border-red-500 rounded-xl p-4">
-      <p class="text-sm font-bold text-red-800">⚠ This situation may need professional attention.</p>
-      <p class="text-sm text-red-700 mt-1">Consider contacting your child's care team or calling 988.</p>
+    <div id="safety-banner" class="hidden fixed top-0 w-full z-50">
+      <div class="bg-red-600 text-white p-3 text-center font-semibold text-sm">⚠ Safety mode active — this situation may need professional attention</div>
+    </div>
+
+    <div id="urgent-help-section" class="hidden mb-4">
+      <div class="border border-red-300 bg-red-50 rounded-xl p-4">
+        <p class="text-sm font-bold text-red-800 mb-2">When to seek urgent help</p>
+        <ul class="text-sm text-red-700 space-y-1 list-disc list-inside">
+          <li>Call 911 if there is immediate danger</li>
+          <li>Call/Text 988 (Suicide &amp; Crisis Lifeline)</li>
+          <li>Go to nearest emergency department if risk escalates</li>
+        </ul>
+      </div>
     </div>
 
     <div id="answer-section" class="mb-6">
@@ -1003,14 +1199,19 @@ function appendAgentLog(message) {
   log.appendChild(row); log.scrollTop=log.scrollHeight;
 }
 
-function renderSourceCards(results) {
+async function renderSourceCards(results) {
   const section=document.getElementById('sources-section'); if(!section) return;
   if(!results||results.length===0) return;
+  const counts = await getSourceCounts();
+  const total = counts.crawled + counts.live;
+  const sourceCountLabel = total > 0
+    ? `${counts.crawled} crawled + ${counts.live} live sources · `
+    : '';
   let html=`
     <div class="flex items-center gap-2 mb-3">
       <span class="text-gray-600 font-semibold text-sm uppercase tracking-wide">Sources</span>
       <span class="h-px flex-1 bg-gray-200"></span>
-      <span class="text-xs text-gray-400">${results.length} result${results.length!==1?'s':''}</span>
+      <span class="text-xs text-gray-400">${sourceCountLabel}showing top ${results.length}</span>
     </div>
     <div class="flex flex-col gap-3">`;
   results.forEach((r,i)=>{ html+=buildSourceCard(r,i+1); });
@@ -1027,7 +1228,11 @@ function renderAnswerBlock(text, opts={}) {
   const personalSection=document.getElementById('personal-section');
   if(!card) return;
 
-  if(safety_flag && safety) safety.classList.remove('hidden');
+  if(safety_flag && safety) {
+    safety.classList.remove('hidden');
+    const urgentHelp = document.getElementById('urgent-help-section');
+    if (urgentHelp) urgentHelp.classList.remove('hidden');
+  }
 
   if(!text) {
     answerText.innerHTML=`<div class="text-amber-800 text-sm"><span class="font-semibold">Summary unavailable</span> — search results are shown below.</div>`;
@@ -1087,17 +1292,19 @@ async function fallbackFetch(question, source, days, limit, audience) {
   if(source) params.set('source',source);
   if(days) params.set('days',days);
   if(audience) params.set('audience',audience);
+  const result=document.getElementById('result');
   try {
-    const resp=await fetch(API_BASE+'/api/search?'+params.toString());
+    const resp=await fetch(API_BASE+'/api/search?'+params.toString(),{signal:createTimeoutSignal(30000)});
     if(!resp.ok) {
-      let msg=`Search failed (HTTP ${resp.status})`;
-      try { const j=await resp.json(); msg=j.detail||j.error||msg; } catch {}
-      document.getElementById('result').innerHTML=`<div class="rounded-xl bg-red-50 border border-red-200 p-4 text-red-800 text-sm"><span class="font-semibold">Error:</span> ${escHtml(msg)}</div>`;
+      const msg=classifyFetchError(new Error('HTTP '+resp.status),resp.status);
+      try { const j=await resp.json(); if(j.detail||j.error) {result.innerHTML=`<div class="rounded-xl bg-red-50 border border-red-200 p-4 text-red-800 text-sm"><span class="font-semibold">Error:</span> ${escHtml(j.detail||j.error)}</div>`; return;} } catch {}
+      result.innerHTML=`<div class="rounded-xl bg-red-50 border border-red-200 p-4 text-red-800 text-sm">${escHtml(msg)}</div>`;
       return;
     }
     renderResults(await resp.json());
   } catch(err) {
-    document.getElementById('result').innerHTML=`<div class="rounded-xl bg-red-50 border border-red-200 p-4 text-red-800 text-sm"><span class="font-semibold">Network error:</span> Could not reach the search service.</div>`;
+    const msg=classifyFetchError(err,0);
+    result.innerHTML=`<div class="rounded-xl bg-red-50 border border-red-200 p-4 text-red-800 text-sm">${escHtml(msg)}</div>`;
   }
 }
 
@@ -1119,8 +1326,17 @@ async function doSearch() {
   if(audience) params.set('audience',audience);
   showProgress();
   const es=new EventSource(`${API_BASE}/api/search/stream?${params}`);
-  let streamGotResults=false, lastSearchTimeMs=null, lastSearchMode=null;
+  let streamGotResults=false, streamGotSummary=false, lastSearchTimeMs=null, lastSearchMode=null;
   es.addEventListener('stage',(e)=>{ const d=JSON.parse(e.data); updateStageUI(d.stage,d.message,d.elapsed_ms); });
+  es.addEventListener('metadata',(e)=>{
+    const d=JSON.parse(e.data);
+    if(d.safety_flag){
+      const banner=document.getElementById('safety-banner');
+      const urgentHelp=document.getElementById('urgent-help-section');
+      if(banner) banner.classList.remove('hidden');
+      if(urgentHelp) urgentHelp.classList.remove('hidden');
+    }
+  });
   es.addEventListener('results',(e)=>{
     const d=JSON.parse(e.data); streamGotResults=true;
     lastSearchTimeMs=d.search_time_ms; lastSearchMode=d.search_mode;
@@ -1129,6 +1345,7 @@ async function doSearch() {
   });
   es.addEventListener('agent_activity',(e)=>{ appendAgentLog(JSON.parse(e.data).message); });
   es.addEventListener('summary',(e)=>{
+    streamGotSummary=true;
     const d=JSON.parse(e.data);
     renderAnswerBlock(d.text,{
       confidence_level: d.confidence_level,
@@ -1140,6 +1357,15 @@ async function doSearch() {
     const d=JSON.parse(e.data); hideProgress();
     updateTimingBadge({search_time_ms:lastSearchTimeMs,llm_time_ms:d.llm_time_ms,
                        search_mode:lastSearchMode,agent_iterations:d.agent_iterations});
+    if(streamGotResults && !streamGotSummary){
+      // SSE ended without summary — LLM timeout or agent failure
+      const card=document.getElementById('answer-card');
+      const answerText=document.getElementById('answer-text');
+      if(card && answerText){
+        answerText.innerHTML='<p class="text-sm text-gray-600">Sources found above. A summary could not be generated at this time.</p>';
+        card.classList.remove('hidden');
+      }
+    }
     setLoading(false); es.close();
   });
   es.addEventListener('error',()=>{
@@ -1164,7 +1390,7 @@ document.getElementById('ask-btn').disabled=true;
 // ════════════════════════════════════════════════════════════════
 // TAB SWITCHING
 // ════════════════════════════════════════════════════════════════
-const ALL_TABS=['search','log','insights','clinician'];
+const ALL_TABS=['search','log','insights','clinician','settings'];
 
 function switchTab(name) {
   // Cancel in-flight insights fetches when leaving the insights tab
@@ -1176,9 +1402,10 @@ function switchTab(name) {
     else { btn.classList.remove('tab-btn-active'); btn.classList.add('tab-btn-inactive'); }
   });
   localStorage.setItem('active_tab',name);
-  if(name==='log')           { loadInterventions(); loadTodayEntry(); }
+  if(name==='log')           { loadInterventions(); loadTodayEntry(); loadLogsHistory(); }
   else if(name==='insights')   loadInsights();
   else if(name==='clinician')  loadClinicianReport();
+  else if(name==='settings')   loadSettings();
 }
 
 // ════════════════════════════════════════════════════════════════
@@ -1594,28 +1821,40 @@ async function dlVoiceFill() {
       }
       const data = await res.json();
 
-      // Store voice metadata
+      // Backend is extract-only — no DB write, no log_id returned.
+      // voiceLogId stays null so submitCombined falls to the POST (new log) path.
       voiceState    = 'MAPPED';
-      voiceLogId    = data.log_id    || null;
-      voiceLoggedAt = data.logged_at || null;
-      voiceLogDate  = data.log_date  || null;
+      voiceLogId    = null;
+      voiceLoggedAt = null;
+      voiceLogDate  = null;
 
-      // Pre-fill form from mapped fields
-      applyVoiceMapped(data.mapped || {});
+      // Adapt ExtractedFields → applyVoiceMapped-compatible object.
+      // Use raw_text as the event description so #log-event is never blank —
+      // a blank event with voiceState=MAPPED would silently skip the POST.
+      const ext = data.extracted || {};
+      applyVoiceMapped({
+        event:    data.raw_text    || null,
+        triggers: ext.trigger_type ? [ext.trigger_type] : [],
+        context:  ext.context      || null,
+        outcome:  ext.outcome_hint || null,
+        severity: ext.severity     || null,
+        tags:     ext.tags         || [],
+      });
 
-      // Show voice banner
+      // Show voice banner (nothing was auto-saved; user must submit)
       const banner = document.getElementById('voice-banner');
       document.getElementById('voice-banner-text').textContent =
-        'Saved automatically. Fields filled below for your review.';
+        'Transcription complete — review fields below, then submit.';
       document.getElementById('voice-transcript').textContent =
-        'Heard: ' + (data.transcription || '(nothing detected)');
+        'Heard: ' + (data.raw_text || '(nothing detected)');
       banner.classList.remove('hidden');
 
-      // Change submit button label to "Update Log"
+      // Keep submit label as "Submit Log" — voiceLogId is null so it's a new POST
       const submitBtn = document.getElementById('log-submit-btn');
-      if (submitBtn) submitBtn.innerHTML = 'Update Log ✅';
+      if (submitBtn) submitBtn.innerHTML = 'Submit Log ✅';
 
-      status.textContent = '✅ Mapped (confidence: ' + (data.mapping_confidence || '?') + ')';
+      const confPct = data.confidence ? Math.round(data.confidence.overall * 100) : null;
+      status.textContent = '✅ Transcription done' + (confPct !== null ? ' (confidence: ' + confPct + '%)' : '');
     } catch (err) {
       voiceState = 'ERROR';
       status.textContent = '❌ Failed: ' + err.message;
@@ -1685,19 +1924,298 @@ function applyVoiceMapped(m) {
   }
 }
 
+// ── Audio Quick Log — confirmation flow (P-UI-3) ──────────────────
+let _audioMediaRecorder = null, _audioChunks = [];
+let _audioAllowedTriggers = [];
+
+async function startAudioLog() {
+  const btn    = document.getElementById('audio-log-btn');
+  const status = document.getElementById('audio-log-status');
+  const errEl  = document.getElementById('transcribe-error');
+  errEl.classList.add('hidden');
+
+  // If already recording — stop
+  if (_audioMediaRecorder && _audioMediaRecorder.state === 'recording') {
+    _audioMediaRecorder.stop(); return;
+  }
+
+  let stream;
+  try { stream = await navigator.mediaDevices.getUserMedia({ audio: true }); }
+  catch (err) {
+    errEl.textContent = 'Microphone access denied: ' + err.message;
+    errEl.classList.remove('hidden'); return;
+  }
+
+  _audioChunks = [];
+  _audioMediaRecorder = new MediaRecorder(stream);
+  _audioMediaRecorder.ondataavailable = e => { if (e.data.size > 0) _audioChunks.push(e.data); };
+
+  _audioMediaRecorder.onstop = async () => {
+    stream.getTracks().forEach(t => t.stop());
+    btn.textContent = '🎙 Start recording';
+    btn.disabled = true;
+    status.textContent = '⏳ Transcribing…';
+
+    const blob = new Blob(_audioChunks, { type: 'audio/webm' });
+    const fd = new FormData();
+    fd.append('audio', blob, 'recording.webm');
+    fd.append('child_id', CHILD_ID);
+
+    try {
+      const resp = await fetch(COLLECT_API + '/transcribe-and-log', {
+        method: 'POST', body: fd, signal: createTimeoutSignal(60000)
+      });
+      if (!resp.ok) {
+        const e = await resp.json().catch(() => ({}));
+        throw new Error(e.detail || 'HTTP ' + resp.status);
+      }
+      const data = await resp.json();
+      status.textContent = '✅ Transcription complete — review below';
+      showAudioConfirm(data);
+    } catch (err) {
+      const msg = classifyFetchError(err, 0);
+      status.textContent = '';
+      errEl.textContent = msg;
+      errEl.classList.remove('hidden');
+    } finally { btn.disabled = false; }
+  };
+
+  _audioMediaRecorder.start();
+  btn.textContent = '⏹ Stop recording';
+  status.textContent = '🔴 Recording… tap again to stop';
+}
+
+function showAudioConfirm(data) {
+  // raw_text (read-only)
+  const rawTextEl = document.getElementById('audio-raw-text');
+  if (rawTextEl) rawTextEl.textContent = data.raw_text || '(nothing detected)';
+
+  // warnings
+  const warnEl = document.getElementById('audio-warnings');
+  if (warnEl) {
+    if (data.warnings && data.warnings.length > 0) {
+      warnEl.innerHTML = data.warnings.map(w => `<p>⚠ ${escHtml(w)}</p>`).join('');
+      warnEl.classList.remove('hidden');
+    } else { warnEl.classList.add('hidden'); }
+  }
+
+  // trigger type dropdown driven by allowed_trigger_values
+  _audioAllowedTriggers = data.allowed_trigger_values || [];
+  const trigSelect = document.getElementById('audio-trigger-type');
+  if (trigSelect) {
+    trigSelect.innerHTML = _audioAllowedTriggers.map(t =>
+      `<option value="${escHtml(t)}">${escHtml(t.replace(/_/g,' '))}</option>`
+    ).join('');
+    const extracted = data.extracted || {};
+    if (extracted.trigger_type && _audioAllowedTriggers.includes(extracted.trigger_type)) {
+      trigSelect.value = extracted.trigger_type;
+    }
+  }
+
+  // severity
+  const sev = (data.extracted || {}).severity || 3;
+  const sevEl = document.getElementById('audio-severity');
+  const sevVal = document.getElementById('audio-severity-val');
+  if (sevEl) sevEl.value = sev;
+  if (sevVal) sevVal.textContent = sev;
+
+  // context
+  const ctxEl = document.getElementById('audio-context');
+  if (ctxEl) ctxEl.value = (data.extracted || {}).context || '';
+
+  // outcome_hint
+  const oEl = document.getElementById('audio-outcome-hint');
+  if (oEl) oEl.value = (data.extracted || {}).outcome_hint || '';
+
+  // confidence display
+  const confEl = document.getElementById('audio-confidence');
+  if (confEl && data.confidence) {
+    const c = data.confidence;
+    confEl.innerHTML = [
+      c.trigger  != null ? `<span class="bg-indigo-50 text-indigo-700 px-2 py-0.5 rounded-full">Trigger: ${Math.round(c.trigger*100)}%</span>` : '',
+      c.severity != null ? `<span class="bg-indigo-50 text-indigo-700 px-2 py-0.5 rounded-full">Severity: ${Math.round(c.severity*100)}%</span>` : '',
+      c.overall  != null ? `<span class="bg-indigo-50 text-indigo-700 px-2 py-0.5 rounded-full">Overall: ${Math.round(c.overall*100)}%</span>` : '',
+    ].join('');
+  }
+
+  const confirmErr = document.getElementById('audio-confirm-error');
+  if (confirmErr) confirmErr.classList.add('hidden');
+
+  document.getElementById('audio-confirm-section').classList.remove('hidden');
+  document.getElementById('audio-confirm-section').scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+async function confirmAudioLog() {
+  const btn = document.getElementById('audio-confirm-btn');
+  const errEl = document.getElementById('audio-confirm-error');
+  if (errEl) errEl.classList.add('hidden');
+
+  const triggerType = document.getElementById('audio-trigger-type').value;
+  const severity    = parseInt(document.getElementById('audio-severity').value);
+  const context     = document.getElementById('audio-context').value || null;
+  const outcomeHint = document.getElementById('audio-outcome-hint').value || null;
+
+  if (!triggerType) {
+    if (errEl) { errEl.textContent = 'Please select a trigger type.'; errEl.classList.remove('hidden'); }
+    return;
+  }
+
+  if (btn) { btn.disabled = true; btn.textContent = 'Saving…'; }
+  const rawText = document.getElementById('audio-raw-text').textContent;
+
+  const body = {
+    child_id:  CHILD_ID,
+    logged_at: new Date().toISOString(),
+    event:     rawText && rawText !== '(nothing detected)' ? rawText : triggerType.replace(/_/g,' '),
+    triggers:  [triggerType],
+    context:   context,
+    outcome:   outcomeHint,
+    severity:  severity,
+    tags:      [],
+    notes:     null,
+  };
+
+  try {
+    const resp = await fetch(COLLECT_API + '/logs', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body), signal: createTimeoutSignal(30000)
+    });
+    if (!resp.ok) {
+      const j = await resp.json().catch(() => ({}));
+      throw new Error(j.detail || 'HTTP ' + resp.status);
+    }
+    cancelAudioLog();
+    showToast('Audio log saved ✓');
+    document.getElementById('audio-log-status').textContent = '';
+  } catch (err) {
+    const msg = classifyFetchError(err, 0);
+    if (errEl) { errEl.textContent = msg; errEl.classList.remove('hidden'); }
+    if (btn) { btn.disabled = false; btn.textContent = '✅ Confirm & Save'; }
+  }
+}
+
+function cancelAudioLog() {
+  document.getElementById('audio-confirm-section').classList.add('hidden');
+  const btn = document.getElementById('audio-confirm-btn');
+  if (btn) { btn.disabled = false; btn.innerHTML = '✅ Confirm &amp; Save'; }
+}
+
+// ── Past Logs history (P-UI-7) ────────────────────────────────────
+let _logsHistoryOffset = 0;
+const LOGS_PAGE_SIZE = 20;
+
+async function loadLogsHistory() {
+  _logsHistoryOffset = 0;
+  const list     = document.getElementById('logs-history-list');
+  const emptyEl  = document.getElementById('logs-history-empty');
+  const endEl    = document.getElementById('logs-history-end');
+  const loadBtn  = document.getElementById('logs-load-more');
+  if (list)    list.innerHTML = '<p class="text-xs text-gray-400">Loading…</p>';
+  if (emptyEl) emptyEl.classList.add('hidden');
+  if (endEl)   endEl.classList.add('hidden');
+  if (loadBtn) loadBtn.classList.add('hidden');
+
+  const today = localDateStr();
+  try {
+    // days=3650 (~10 yrs) ensures all historical logs are reachable via pagination.
+    // Without this param the backend defaults to days=30 and older logs are invisible.
+    const resp = await fetch(
+      COLLECT_API + '/logs?limit=' + LOGS_PAGE_SIZE + '&offset=0&include_voided=false&days=3650',
+      { signal: createTimeoutSignal(30000) }
+    );
+    if (!resp.ok) throw new Error('HTTP ' + resp.status);
+    const data = await resp.json();
+    const logs = (data.logs || []).filter(l => l.logged_at && localDateStr(l.logged_at) !== today);
+    if (list) list.innerHTML = '';
+    if (logs.length === 0) {
+      if (emptyEl) emptyEl.classList.remove('hidden'); return;
+    }
+    logs.forEach(l => { if (list) list.appendChild(buildLogCard(l)); });
+    _logsHistoryOffset = LOGS_PAGE_SIZE;
+    if (logs.length < LOGS_PAGE_SIZE) {
+      if (endEl) endEl.classList.remove('hidden');
+    } else {
+      if (loadBtn) loadBtn.classList.remove('hidden');
+    }
+  } catch (err) {
+    if (list) list.innerHTML = `<p class="text-xs text-red-600">Could not load past logs: ${escHtml(err.message)}</p>`;
+  }
+}
+
+async function loadMoreLogs() {
+  const loadBtn = document.getElementById('logs-load-more');
+  const list    = document.getElementById('logs-history-list');
+  const endEl   = document.getElementById('logs-history-end');
+  const today   = localDateStr();
+  const prevOff = _logsHistoryOffset;
+  if (loadBtn) { loadBtn.textContent = 'Loading…'; loadBtn.disabled = true; }
+  try {
+    const resp = await fetch(
+      COLLECT_API + '/logs?limit=' + LOGS_PAGE_SIZE + '&offset=' + _logsHistoryOffset + '&include_voided=false&days=3650',
+      { signal: createTimeoutSignal(30000) }
+    );
+    if (!resp.ok) throw new Error('HTTP ' + resp.status);
+    const data = await resp.json();
+    const logs = (data.logs || []).filter(l => l.logged_at && localDateStr(l.logged_at) !== today);
+    logs.forEach(l => { if (list) list.appendChild(buildLogCard(l)); });
+    _logsHistoryOffset += LOGS_PAGE_SIZE;
+    if (logs.length < LOGS_PAGE_SIZE) {
+      if (loadBtn) loadBtn.classList.add('hidden');
+      if (endEl) endEl.classList.remove('hidden');
+    } else {
+      if (loadBtn) { loadBtn.textContent = 'Load more'; loadBtn.disabled = false; }
+    }
+  } catch (err) {
+    _logsHistoryOffset = prevOff;
+    if (loadBtn) { loadBtn.textContent = 'Load more'; loadBtn.disabled = false; }
+    showToast('Could not load more logs — try again.');
+  }
+}
+
+function buildLogCard(log) {
+  const div = document.createElement('div');
+  div.className = 'border border-gray-200 rounded-xl p-3 bg-white space-y-1.5';
+  const dateStr = log.logged_at
+    ? new Date(log.logged_at).toLocaleString('en-US',{month:'short',day:'numeric',hour:'numeric',minute:'2-digit'})
+    : '';
+  const sev = log.severity || 0;
+  const sevColor = sev >= 4 ? 'bg-red-100 text-red-800' : sev >= 3 ? 'bg-yellow-100 text-yellow-800' : 'bg-green-100 text-green-800';
+  const triggers = (log.triggers || []).map(t =>
+    `<span class="inline-block px-1.5 py-0.5 bg-indigo-50 text-indigo-700 text-xs rounded-full border border-indigo-200">${escHtml(t)}</span>`
+  ).join(' ');
+  const context = log.context
+    ? escHtml(log.context.length > 120 ? log.context.slice(0,120) + '…' : log.context)
+    : '';
+  const eventText = log.event
+    ? escHtml(log.event.length > 80 ? log.event.slice(0,80) + '…' : log.event)
+    : '';
+  div.innerHTML = `
+    <div class="flex items-center gap-2 flex-wrap">
+      <span class="text-xs text-gray-400">${escHtml(dateStr)}</span>
+      ${sev ? `<span class="text-xs font-medium px-2 py-0.5 rounded-full ${sevColor}">Severity ${sev}</span>` : ''}
+      ${triggers}
+    </div>
+    ${eventText ? `<p class="text-sm text-gray-700 font-medium leading-snug">${eventText}</p>` : ''}
+    ${context ? `<p class="text-xs text-gray-500 leading-relaxed">${context}</p>` : ''}`;
+  return div;
+}
+
 // ════════════════════════════════════════════════════════════════
 // TAB 3 — INSIGHTS
 // ════════════════════════════════════════════════════════════════
 async function fetchInsightsWithFallback(refresh, signal) {
-  const qs = refresh ? '?refresh=true' : '';
+  const params = new URLSearchParams({ child_id: CHILD_ID });
+  if (refresh) params.set('refresh', 'true');
+  const qs = '?' + params.toString();
   try {
     const resp = await fetch(API_BASE + '/api/insights/full' + qs, { signal });
     if (resp.ok) return resp;
   } catch(e) { if (e.name === 'AbortError') throw e; /* fall through to base endpoint */ }
   return fetch(API_BASE + '/api/insights' + qs, { signal });
 }
-let _insightsCacheValid = false;
 let _insightsAbort = null;
+let _insightsCacheValid = false;  // true after successful load; false after new log submitted
+
 async function loadInsights(refresh=false) {
   // Skip re-fetch if cache is still valid (no new log submitted) and not a forced refresh
   if (!refresh && _insightsCacheValid) return;
@@ -1733,18 +2251,24 @@ async function loadInsights(refresh=false) {
       const data=await insightsResp.value.json();
       if (signal.aborted) return;
       renderPatternInsights(data);
+      _insightsCacheValid = true;
       const metaEl=document.getElementById('insights-generated-at');
       if(metaEl&&data.generated_at){
-        const ago=timeAgo(new Date(data.generated_at));
-        metaEl.textContent=(data.cached?'Cached · ':'')+'Generated '+ago;
+        const ts=new Date(data.generated_at).toLocaleString([],{month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'});
+        metaEl.textContent=(data.cached?'Cached, generated at: ':'Generated at: ')+ts;
       }
     }
-    catch { document.getElementById('insights-patterns').innerHTML='<p class="text-xs text-gray-500">Could not display insights.</p>'; }
-    _insightsCacheValid = true;
+    catch { document.getElementById('insights-patterns').innerHTML='<p class="text-xs text-gray-500">Could not display insights.</p>'; _insightsCacheValid = true; }
   } else {
     document.getElementById('insights-patterns').innerHTML='<p class="text-xs text-gray-500">Not enough data yet — keep logging daily.</p>';
   }
-  } catch(e) { if (e.name !== 'AbortError') throw e; }
+  } catch(e) {
+    if (e.name === 'AbortError') return;
+    const msg = classifyFetchError(e, 0);
+    showBanner('insights-error', msg);
+    document.getElementById('weekly-summary').innerHTML='<p class="text-xs text-gray-500">Could not load — check connection.</p>';
+    document.getElementById('insights-patterns').innerHTML='';
+  }
 }
 
 function refreshInsights() {
@@ -1807,7 +2331,7 @@ function renderPatternInsights(data) {
   container.innerHTML=`
     <div class="space-y-4">
       <div class="dl-card">
-        <div class="dl-section-title">🔥 Top Triggers</div>
+        <div class="dl-section-title">🔥 Top Triggers${data.date_range&&data.date_range.from?` <span class="text-xs text-gray-400 font-normal">(${escHtml(data.date_range.from)} – ${escHtml(data.date_range.to||'')})</span>`:' <span class="text-xs text-gray-400 font-normal">(last 30 days)</span>'}</div>
         ${topTriggers.length===0?'<p class="text-xs text-gray-500">No data yet.</p>':triggerRows}
       </div>
       <div class="dl-card">
@@ -1938,6 +2462,140 @@ function renderClinicianReport(d) {
 }
 
 // ════════════════════════════════════════════════════════════════
+// TAB 5 — SETTINGS  (P-UI-1)
+// ════════════════════════════════════════════════════════════════
+
+// Identity constants — single-user deployment (no auth layer)
+const USER_ID = 'default';
+// CHILD_ID already defined above as 'default'
+
+// Populate timezone <select> with Intl-aware list
+function populateTimezones() {
+  const sel = document.getElementById('settings-timezone');
+  if (!sel) return;
+  // Use a representative set of IANA timezone names
+  const zones = [
+    'America/New_York','America/Chicago','America/Denver','America/Los_Angeles',
+    'America/Anchorage','Pacific/Honolulu','America/Toronto','America/Vancouver',
+    'America/Sao_Paulo','America/Buenos_Aires','Europe/London','Europe/Paris',
+    'Europe/Berlin','Europe/Madrid','Europe/Rome','Europe/Moscow',
+    'Asia/Dubai','Asia/Kolkata','Asia/Dhaka','Asia/Bangkok','Asia/Shanghai',
+    'Asia/Tokyo','Asia/Seoul','Asia/Singapore','Asia/Hong_Kong',
+    'Australia/Sydney','Australia/Melbourne','Pacific/Auckland',
+    'Africa/Cairo','Africa/Lagos','Africa/Johannesburg',
+  ];
+  zones.forEach(tz => {
+    const opt = document.createElement('option');
+    opt.value = tz;
+    opt.textContent = tz.replace(/_/g,' ').replace('/',' / ');
+    sel.appendChild(opt);
+  });
+}
+
+// Load settings from backend on tab open
+async function loadSettings() {
+  const errEl     = document.getElementById('settings-error');
+  const offBanner = document.getElementById('settings-offline-banner');
+  if (errEl)     errEl.classList.add('hidden');
+  if (offBanner) offBanner.classList.add('hidden');
+
+  try {
+    const resp = await fetch(
+      COLLECT_API + '/user-settings?user_id=' + USER_ID + '&child_id=' + CHILD_ID,
+      { signal: createTimeoutSignal(15000) }
+    );
+    if (!resp.ok) throw new Error('HTTP ' + resp.status);
+    const data = await resp.json();
+    applySettingsToForm(data);
+    // Cache to localStorage for offline fallback
+    localStorage.setItem('settings_cache', JSON.stringify(data));
+  } catch (err) {
+    // Try localStorage fallback
+    const cached = localStorage.getItem('settings_cache');
+    if (cached) {
+      try { applySettingsToForm(JSON.parse(cached)); } catch {}
+      if (offBanner) offBanner.classList.remove('hidden');
+    } else {
+      const msg = classifyFetchError(err, 0);
+      showBanner('settings-error', 'Could not load settings. ' + msg);
+    }
+  }
+}
+
+function applySettingsToForm(data) {
+  const nameEl = document.getElementById('settings-child-name');
+  const tzEl   = document.getElementById('settings-timezone');
+  const langEl = document.getElementById('settings-language');
+  if (nameEl && data.child_display_name) nameEl.value = data.child_display_name;
+  if (tzEl && data.timezone) tzEl.value = data.timezone;
+  if (langEl && data.language) langEl.value = data.language;
+  // Restore ui_preferences fields
+  if (data.ui_preferences) {
+    const prefs = data.ui_preferences;
+    // Audience toggle: migrate from localStorage if present, else restore from prefs
+    if (prefs.audience_mode) {
+      const audEl = document.getElementById('filter-audience');
+      if (audEl) audEl.value = prefs.audience_mode;
+    }
+  }
+}
+
+async function saveSettings() {
+  const btn      = document.getElementById('settings-save-btn');
+  const statusEl = document.getElementById('settings-save-status');
+  const errEl    = document.getElementById('settings-error');
+  if (errEl) errEl.classList.add('hidden');
+  if (statusEl) { statusEl.textContent = 'Saving…'; statusEl.className = 'text-gray-500 text-sm text-center'; statusEl.classList.remove('hidden'); }
+  if (btn) btn.disabled = true;
+
+  // Collect audience toggle value for ui_preferences migration
+  const audEl = document.getElementById('filter-audience');
+  const audienceMode = audEl ? audEl.value : null;
+
+  // Read ui_preferences from existing cache so we don't lose other prefs
+  let uiPrefs = {};
+  const cached = localStorage.getItem('settings_cache');
+  if (cached) { try { uiPrefs = JSON.parse(cached).ui_preferences || {}; } catch {} }
+  if (audienceMode) uiPrefs.audience_mode = audienceMode;
+
+  const body = {
+    user_id:            USER_ID,
+    child_id:           CHILD_ID,
+    child_display_name: document.getElementById('settings-child-name').value.trim() || null,
+    timezone:           document.getElementById('settings-timezone').value || null,
+    language:           document.getElementById('settings-language').value || null,
+    ui_preferences:     Object.keys(uiPrefs).length > 0 ? uiPrefs : null,
+  };
+
+  try {
+    const resp = await fetch(COLLECT_API + '/user-settings', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+      signal: createTimeoutSignal(15000),
+    });
+    if (!resp.ok) {
+      const j = await resp.json().catch(() => ({}));
+      throw new Error(j.detail || 'HTTP ' + resp.status);
+    }
+    const saved = await resp.json();
+    // Update localStorage cache
+    localStorage.setItem('settings_cache', JSON.stringify(saved));
+    // Remove standalone audience localStorage key now that it's in ui_preferences
+    if (audienceMode) localStorage.removeItem('audience_mode');
+    if (statusEl) { statusEl.textContent = '✅ Saved'; statusEl.className = 'text-green-600 text-sm text-center'; }
+    showToast('Settings saved ✓');
+  } catch (err) {
+    const msg = classifyFetchError(err, 0);
+    // On failure: store in localStorage for offline sync
+    localStorage.setItem('settings_pending', JSON.stringify(body));
+    if (statusEl) { statusEl.textContent = '⚠ Not saved — ' + msg + ' Will sync when reconnected.'; statusEl.className = 'text-red-600 text-sm text-center'; }
+  } finally {
+    if (btn) btn.disabled = false;
+  }
+}
+
+// ════════════════════════════════════════════════════════════════
 // PAGE INIT
 // ════════════════════════════════════════════════════════════════
 document.addEventListener('DOMContentLoaded',function(){
@@ -1967,8 +2625,16 @@ document.addEventListener('DOMContentLoaded',function(){
     .then(d=>{ document.getElementById('stats-badge').textContent=(d.total_items||0).toLocaleString()+' items indexed'; })
     .catch(()=>{ document.getElementById('stats-badge').textContent='— items indexed'; });
 
+  // Pre-fetch source counts so they're ready when search results render
+  getSourceCounts();
+
   // Initialize audience toggle from localStorage (P4)
   initAudienceToggle();
+
+  // Populate timezone dropdown and pre-load settings on startup
+  // (needed so audience toggle migration fires even if user never visits Settings tab)
+  populateTimezones();
+  loadSettings();
 
   // Load trigger suggestion chips (P5)
   loadTriggerChips();
@@ -1986,6 +2652,13 @@ document.addEventListener('DOMContentLoaded',function(){
       dot.className='h-2 w-2 rounded-full bg-red-500'; dot.title='Search service: unreachable';
     });
 });
+
+// ── Service Worker registration (P-UI-2) ──────────────────────────
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('/sw.js').catch(() => {/* SW optional — fail silently */});
+  });
+}
 </script>
 </body>
 </html>
