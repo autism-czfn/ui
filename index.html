@@ -47,6 +47,71 @@
     /* sources modal overlay */
     .modal-overlay { position:fixed; inset:0; background:rgba(0,0,0,.4); z-index:50; display:flex; align-items:center; justify-content:center; }
     .modal-content { background:white; border-radius:1rem; max-width:40rem; width:90%; max-height:80vh; overflow-y:auto; padding:1.5rem; box-shadow:0 25px 50px rgba(0,0,0,.15); }
+    /* ── Chat tab ────────────────────────────────────────────────── */
+    .chat-bubble-user { background:#4f46e5; color:white; border-radius:1rem 1rem .25rem 1rem; }
+    .chat-bubble-asst { background:white; border:1px solid #e5e7eb; border-radius:1rem 1rem 1rem .25rem; box-shadow:0 1px 2px rgba(0,0,0,.04); }
+    .chat-cursor { display:inline-block; width:.5rem; height:1rem; background:#818cf8; border-radius:2px; vertical-align:middle; animation:chat-blink .9s step-end infinite; }
+    @keyframes chat-blink { 0%,100%{opacity:1} 50%{opacity:0} }
+    .chat-chip { display:inline-flex; align-items:center; padding:.2rem .6rem; border-radius:9999px; font-size:.7rem; font-weight:600; background:#eef2ff; color:#3730a3; border:1.5px solid #c7d2fe; }
+    .chat-src-dot { width:8px; height:8px; border-radius:50%; flex-shrink:0; transition:background .3s; }
+    .chat-src-dot-idle    { background:#d1d5db; }
+    .chat-src-dot-pending { background:#f59e0b; animation:chat-blink .8s step-end infinite; }
+    .chat-src-dot-done    { background:#22c55e; animation:none; }
+    /* markdown inside assistant bubbles */
+    .chat-md h1,.chat-md h2,.chat-md h3 { font-weight:700; margin-top:.8em; margin-bottom:.3em; }
+    .chat-md ul,.chat-md ol { padding-left:1.4em; margin:.4em 0; }
+    .chat-md ul { list-style-type:disc; }
+    .chat-md ol { list-style-type:decimal; }
+    .chat-md p  { margin-bottom:.5em; }
+    .chat-md strong { font-weight:700; }
+    .chat-md em { font-style:italic; }
+    /* Phase 3 – mobile: stack evidence below chat */
+    @media (max-width:640px) {
+      #chat-main { flex-direction:column !important; overflow-y:auto !important; }
+      #chat-evidence { width:100% !important; max-height:none !important; overflow-y:visible !important; }
+      #chat-messages { max-height:50vh !important; }
+    }
+    /* Chat tab — viewport-locked layout so input is ALWAYS visible at bottom.
+       header=57px sticky + tabbar≈45px sticky = 102px consumed.
+       #panel-chat fills the remaining dvh; children flex to fill;
+       messages grow to fill available space (flex:1); evidence scrolls internally. */
+    #panel-chat:not(.hidden) {
+      height: calc(100dvh - 102px);
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+    }
+    #chat-tab-panel {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      min-height: 0;
+      overflow: hidden;
+      width: 100%; /* mx-auto on this element collapses width to content in a flex-column parent */
+    }
+    #chat-main {
+      flex: 1 !important;
+      min-height: 0;
+      overflow: hidden;
+    }
+    #chat-center {
+      min-height: 0;
+      overflow: hidden;
+    }
+    #chat-messages {
+      flex: 1 !important;
+      min-height: 0 !important;
+      max-height: none !important;
+    }
+    #chat-evidence {
+      overflow-y: auto;
+      min-height: 0;
+    }
+    /* Section cards must NOT shrink — they should keep natural height so
+       #chat-evidence scrolls them as a unit instead of squishing them. */
+    #chat-evidence > div {
+      flex-shrink: 0;
+    }
     /* print: hide chrome, expand evidence panels */
     @media print {
       header, #tab-bar, #export-btn, .no-print { display:none !important; }
@@ -84,6 +149,7 @@
     <button id="tab-btn-insights"  onclick="switchTab('insights')"  class="tab-btn tab-btn-inactive  flex-none px-4 py-3 text-sm -mb-px transition cursor-pointer bg-transparent border-0">📊 Insights</button>
     <button id="tab-btn-clinician" onclick="switchTab('clinician')" class="tab-btn tab-btn-inactive  flex-none px-4 py-3 text-sm -mb-px transition cursor-pointer bg-transparent border-0">🏥 Clinician</button>
     <button id="tab-btn-settings"  onclick="switchTab('settings')"  class="tab-btn tab-btn-inactive  flex-none px-4 py-3 text-sm -mb-px transition cursor-pointer bg-transparent border-0">⚙️ Settings</button>
+    <button id="tab-btn-chat"     onclick="switchTab('chat')"     class="tab-btn tab-btn-inactive  flex-none px-4 py-3 text-sm -mb-px transition cursor-pointer bg-transparent border-0">💬 Chat</button>
   </div>
 </div>
 
@@ -430,17 +496,6 @@
     <p id="dl-record-status" class="text-xs text-gray-400 mt-2 text-center"></p>
   </div>
 
-  <!-- Audio Quick Log with confirmation (P-UI-3) -->
-  <div class="dl-card">
-    <div class="dl-section-title">🎙 Audio Quick Log</div>
-    <p class="text-xs text-gray-500 mb-3">Record a single event, review the extraction, then save.</p>
-    <button id="audio-log-btn" onclick="startAudioLog()"
-            class="dl-btn-secondary w-full justify-center py-3 text-sm font-semibold border-indigo-300 text-indigo-700 hover:bg-indigo-50">
-      🎙 Start recording
-    </button>
-    <p id="audio-log-status" class="text-xs text-gray-400 mt-2 text-center"></p>
-    <p id="transcribe-error" class="hidden text-xs text-red-600 mt-1 text-center"></p>
-  </div>
 
   <!-- Confirmation form shown after transcription (P-UI-3) -->
   <div id="audio-confirm-section" class="hidden dl-card space-y-4">
@@ -644,6 +699,145 @@
 
 </main>
 </div><!-- /panel-settings -->
+
+<!-- ════════════════════════════════════════════════════════════════
+     PANEL 6 — CHAT
+     ════════════════════════════════════════════════════════════════ -->
+<div id="panel-chat" class="hidden">
+<div id="chat-tab-panel" class="max-w-6xl mx-auto px-4 py-4">
+
+  <!-- TOP: Status bar (hidden until first metadata event) -->
+  <div id="chat-status-skeleton" class="hidden mb-3 bg-white border border-gray-200 rounded-xl px-4 py-3">
+    <div class="flex gap-3 items-center flex-wrap">
+      <span class="text-xs font-semibold text-gray-400 uppercase tracking-wide mr-1">Analysis</span>
+      <div class="flex items-center gap-1.5">
+        <span class="text-xs text-gray-400">Intent</span>
+        <div class="h-3 bg-gray-200 rounded w-28 animate-pulse"></div>
+      </div>
+      <span class="text-gray-200">·</span>
+      <div class="flex items-center gap-1.5">
+        <span class="text-xs text-gray-400">Mode</span>
+        <div class="h-3 bg-gray-200 rounded w-32 animate-pulse"></div>
+      </div>
+      <span class="text-gray-200">·</span>
+      <div class="flex items-center gap-1.5">
+        <span class="text-xs text-gray-400">Triggers</span>
+        <div class="h-5 bg-gray-200 rounded-full w-16 animate-pulse"></div>
+        <div class="h-5 bg-gray-200 rounded-full w-20 animate-pulse"></div>
+      </div>
+    </div>
+  </div>
+  <div id="chat-status-bar" class="hidden mb-3 bg-white border border-indigo-200 rounded-xl px-4 py-2.5 flex flex-col gap-y-1.5">
+    <!-- Row 1: Intent · Approach · Top 3 triggers -->
+    <div class="flex flex-wrap items-center gap-x-3 gap-y-1">
+      <span class="text-xs font-semibold text-gray-400 uppercase tracking-wide">Topic</span>
+      <span id="chat-intent" class="text-sm font-semibold text-indigo-700"></span>
+      <span class="text-gray-300 hidden sm:inline">·</span>
+      <span class="text-xs font-semibold text-gray-400 uppercase tracking-wide">Approach</span>
+      <span id="chat-mode" class="text-sm font-medium text-gray-600 italic"></span>
+      <span class="text-gray-300 hidden sm:inline">·</span>
+      <span class="text-xs font-semibold text-gray-400 uppercase tracking-wide">Top 3 triggers</span>
+      <div id="chat-trigger-chips" class="flex flex-wrap gap-1.5"></div>
+    </div>
+  </div>
+
+  <!-- MAIN ROW: center + right evidence -->
+  <div id="chat-main" class="flex gap-3" style="align-items:stretch">
+
+    <!-- CENTER: chat panel -->
+    <div id="chat-center" class="flex flex-col flex-1 min-w-0">
+
+      <!-- Retrieval progress row removed — status dots moved into right panel section headers -->
+
+      <!-- Message history -->
+      <div id="chat-messages" class="flex flex-col gap-3 overflow-y-auto mb-3"
+           style="min-height:0;">
+        <div id="chat-empty" class="text-center text-gray-400 py-14 select-none">
+          <div class="text-5xl mb-3">💬</div>
+          <p class="text-base font-medium text-gray-600">Ask anything about your child</p>
+          <p class="text-sm mt-1">Personalised answers from your logs + clinical research + live sources</p>
+        </div>
+      </div>
+
+      <!-- Input area -->
+      <div class="bg-white border border-gray-200 rounded-2xl px-3 pt-2.5 pb-2 shadow-sm">
+        <textarea id="chat-input" rows="1"
+          placeholder="What patterns do you see in my child's meltdowns?"
+          class="w-full resize-none text-sm border-0 outline-none text-gray-800 placeholder-gray-400 bg-transparent leading-relaxed block"
+          style="overflow-y:hidden; min-height:1.5rem;"></textarea>
+        <div class="flex items-center justify-between mt-2">
+          <button onclick="clearChatConversation()"
+            class="text-xs text-gray-400 hover:text-gray-600 bg-transparent border-0 cursor-pointer transition">
+            ✕ New conversation
+          </button>
+          <button id="chat-send-btn" onclick="sendChatMessage()"
+            class="flex items-center gap-1.5 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-40
+                   text-white text-sm font-semibold rounded-xl px-4 py-2 transition">
+            <span id="chat-send-label">Send</span>
+            <svg id="chat-send-icon" class="w-3.5 h-3.5 flex-none" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M5 12h14M12 5l7 7-7 7"/>
+            </svg>
+          </button>
+        </div>
+      </div>
+    </div><!-- /#chat-center -->
+
+    <!-- RIGHT: evidence panel (Phase 2) -->
+    <div id="chat-evidence" class="flex flex-col gap-2.5 flex-shrink-0" style="width:268px">
+
+      <!-- 📋 Personal Logs -->
+      <div class="bg-white border border-gray-200 rounded-xl overflow-hidden">
+        <button onclick="toggleChatSection('logs')"
+          class="w-full flex items-center justify-between px-3.5 py-2.5 text-sm font-semibold
+                 text-gray-700 bg-transparent border-0 cursor-pointer hover:bg-gray-50 transition">
+          <span class="flex items-center gap-2">
+            <span class="chat-src-dot chat-src-dot-idle" id="chat-dot-logs"></span>
+            📋 Personal Logs
+          </span>
+          <span id="chat-logs-chevron" class="text-gray-400 text-xs transition-transform">▾</span>
+        </button>
+        <div id="chat-evidence-logs" class="px-3 pb-3 space-y-1.5">
+          <p class="text-xs text-gray-400 text-center py-3">Ask a question to see results.</p>
+        </div>
+      </div>
+
+      <!-- 📘 Clinical Evidence -->
+      <div class="bg-white border border-gray-200 rounded-xl overflow-hidden">
+        <button onclick="toggleChatSection('crawled')"
+          class="w-full flex items-center justify-between px-3.5 py-2.5 text-sm font-semibold
+                 text-gray-700 bg-transparent border-0 cursor-pointer hover:bg-gray-50 transition">
+          <span class="flex items-center gap-2">
+            <span class="chat-src-dot chat-src-dot-idle" id="chat-dot-crawl"></span>
+            📘 Clinical Evidence
+          </span>
+          <span id="chat-crawled-chevron" class="text-gray-400 text-xs">▾</span>
+        </button>
+        <div id="chat-evidence-crawled" class="px-3 pb-3 space-y-1.5">
+          <p class="text-xs text-gray-400 text-center py-3">Ask a question to see results.</p>
+        </div>
+      </div>
+
+      <!-- 🌐 Live Sources -->
+      <div class="bg-white border border-gray-200 rounded-xl overflow-hidden">
+        <button onclick="toggleChatSection('live')"
+          class="w-full flex items-center justify-between px-3.5 py-2.5 text-sm font-semibold
+                 text-gray-700 bg-transparent border-0 cursor-pointer hover:bg-gray-50 transition">
+          <span class="flex items-center gap-2">
+            <span class="chat-src-dot chat-src-dot-idle" id="chat-dot-live"></span>
+            🌐 Live Sources
+            <span id="chat-live-attempted" class="text-xs font-normal text-gray-400 hidden"></span>
+          </span>
+          <span id="chat-live-chevron" class="text-gray-400 text-xs">▾</span>
+        </button>
+        <div id="chat-evidence-live" class="px-3 pb-3 space-y-1.5">
+          <p class="text-xs text-gray-400 text-center py-3">Ask a question to see results.</p>
+        </div>
+      </div>
+
+    </div><!-- /#chat-evidence -->
+  </div><!-- /#chat-main -->
+</div><!-- /#chat-tab-panel -->
+</div><!-- /panel-chat -->
 
 <!-- ── Sources Modal (P3) ──────────────────────────────────────── -->
 <div id="sources-modal" class="modal-overlay hidden" onclick="if(event.target===this)closeSourcesModal()">
@@ -1390,7 +1584,7 @@ document.getElementById('ask-btn').disabled=true;
 // ════════════════════════════════════════════════════════════════
 // TAB SWITCHING
 // ════════════════════════════════════════════════════════════════
-const ALL_TABS=['search','log','insights','clinician','settings'];
+const ALL_TABS=['search','log','insights','clinician','settings','chat'];
 
 function switchTab(name) {
   // Cancel in-flight insights fetches when leaving the insights tab
@@ -1406,6 +1600,7 @@ function switchTab(name) {
   else if(name==='insights')   loadInsights();
   else if(name==='clinician')  loadClinicianReport();
   else if(name==='settings')   loadSettings();
+  else if(name==='chat')       initChatTab();
 }
 
 // ════════════════════════════════════════════════════════════════
@@ -2228,47 +2423,59 @@ async function loadInsights(refresh=false) {
   document.getElementById('insights-patterns').innerHTML='<p class="text-xs text-gray-400">Loading…</p>';
   document.getElementById('insights-error').classList.add('hidden');
 
-  try {
-  const [weeklyResp, insightsResp] = await Promise.allSettled([
-    fetch(API_BASE+'/api/weekly-summary?child_id='+CHILD_ID+'&week_offset=0', { signal }),
-    fetchInsightsWithFallback(refresh, signal),
-  ]);
+  // Fire both requests concurrently but render each independently as it arrives.
+  // Weekly summary can take many seconds (LLM narration on cache miss) — don't
+  // block the cached insights panel waiting for it.
 
-  // If aborted after awaiting, stop processing results
-  if (signal.aborted) return;
-
-  // Weekly summary
-  if(weeklyResp.status==='fulfilled'&&weeklyResp.value.ok){
-    try { renderWeeklySummary(await weeklyResp.value.json()); }
-    catch { document.getElementById('weekly-summary').innerHTML='<p class="text-xs text-gray-500">Could not display weekly summary.</p>'; }
-  } else {
-    document.getElementById('weekly-summary').innerHTML='<p class="text-xs text-gray-500">Not enough data yet — keep logging daily.</p>';
-  }
-
-  // Pattern insights
-  if(insightsResp.status==='fulfilled'&&insightsResp.value.ok){
+  // ── Insights (fast — usually cached) ────────────────────────────────────────
+  const insightsPromise = (async () => {
     try {
-      const data=await insightsResp.value.json();
+      const resp = await fetchInsightsWithFallback(refresh, signal);
       if (signal.aborted) return;
-      renderPatternInsights(data);
-      _insightsCacheValid = true;
-      const metaEl=document.getElementById('insights-generated-at');
-      if(metaEl&&data.generated_at){
-        const ts=new Date(data.generated_at).toLocaleString([],{month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'});
-        metaEl.textContent=(data.cached?'Cached, generated at: ':'Generated at: ')+ts;
+      if (resp.ok) {
+        try {
+          const data = await resp.json();
+          if (signal.aborted) return;
+          renderPatternInsights(data);
+          _insightsCacheValid = true;
+          const metaEl = document.getElementById('insights-generated-at');
+          if (metaEl && data.generated_at) {
+            const ts = new Date(data.generated_at).toLocaleString([], {month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'});
+            metaEl.textContent = (data.cached ? 'Cached, generated at: ' : 'Generated at: ') + ts;
+          }
+        } catch {
+          document.getElementById('insights-patterns').innerHTML='<p class="text-xs text-gray-500">Could not display insights.</p>';
+          _insightsCacheValid = true;
+        }
+      } else {
+        document.getElementById('insights-patterns').innerHTML='<p class="text-xs text-gray-500">Not enough data yet — keep logging daily.</p>';
       }
+    } catch(e) {
+      if (e.name === 'AbortError') return;
+      const msg = classifyFetchError(e, 0);
+      showBanner('insights-error', msg);
+      document.getElementById('insights-patterns').innerHTML='';
     }
-    catch { document.getElementById('insights-patterns').innerHTML='<p class="text-xs text-gray-500">Could not display insights.</p>'; _insightsCacheValid = true; }
-  } else {
-    document.getElementById('insights-patterns').innerHTML='<p class="text-xs text-gray-500">Not enough data yet — keep logging daily.</p>';
-  }
-  } catch(e) {
-    if (e.name === 'AbortError') return;
-    const msg = classifyFetchError(e, 0);
-    showBanner('insights-error', msg);
-    document.getElementById('weekly-summary').innerHTML='<p class="text-xs text-gray-500">Could not load — check connection.</p>';
-    document.getElementById('insights-patterns').innerHTML='';
-  }
+  })();
+
+  // ── Weekly summary (slow on cache miss — LLM narration) ─────────────────────
+  const weeklyPromise = (async () => {
+    try {
+      const resp = await fetch(API_BASE+'/api/weekly-summary?child_id='+CHILD_ID+'&week_offset=0', { signal });
+      if (signal.aborted) return;
+      if (resp.ok) {
+        try { renderWeeklySummary(await resp.json()); }
+        catch { document.getElementById('weekly-summary').innerHTML='<p class="text-xs text-gray-500">Could not display weekly summary.</p>'; }
+      } else {
+        document.getElementById('weekly-summary').innerHTML='<p class="text-xs text-gray-500">Not enough data yet — keep logging daily.</p>';
+      }
+    } catch(e) {
+      if (e.name === 'AbortError') return;
+      document.getElementById('weekly-summary').innerHTML='<p class="text-xs text-gray-500">Could not load — check connection.</p>';
+    }
+  })();
+
+  await Promise.allSettled([insightsPromise, weeklyPromise]);
 }
 
 function refreshInsights() {
@@ -2652,6 +2859,580 @@ document.addEventListener('DOMContentLoaded',function(){
       dot.className='h-2 w-2 rounded-full bg-red-500'; dot.title='Search service: unreachable';
     });
 });
+
+// ════════════════════════════════════════════════════════════════
+// TAB 6 — CHAT  (all three phases)
+// ════════════════════════════════════════════════════════════════
+
+// ── State ─────────────────────────────────────────────────────────
+let _chatMessages       = [];     // { role: 'user'|'assistant', content: string }
+let _chatStreaming       = false;
+let _chatInitialized    = false;  // history loaded at least once
+let _chatPendingMessage = null;   // message currently in-flight; used by retryChatLast()
+
+// ── Helpers ───────────────────────────────────────────────────────
+function getChatAudience() {
+  return localStorage.getItem('chat_audience') || 'parent';
+}
+
+// ── Parse SSE ReadableStream into events ──────────────────────────
+// Yields { type: string, data: string } for each complete SSE frame.
+// NOTE: EventSource is GET-only; we must use fetch + ReadableStream for POST.
+async function* parseSseStream(reader) {
+  const decoder = new TextDecoder();
+  let buf = '';
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    buf += decoder.decode(value, { stream: true });
+    const frames = buf.split('\n\n');
+    buf = frames.pop();           // last incomplete frame stays buffered
+    for (const frame of frames) {
+      if (!frame.trim()) continue;
+      let eventType = 'message', dataLine = '';
+      for (const line of frame.split('\n')) {
+        if (line.startsWith('event:')) eventType = line.slice(6).trim();
+        else if (line.startsWith('data:'))  dataLine  = line.slice(5).trim();
+      }
+      if (dataLine) yield { type: eventType, data: dataLine };
+    }
+  }
+}
+
+// ── Tab initialisation (called once on first tab open) ────────────
+async function initChatTab() {
+  if (_chatInitialized) return;
+  _chatInitialized = true;
+  // Show skeleton immediately so the status area is never blank
+  document.getElementById('chat-status-skeleton').classList.remove('hidden');
+  await loadChatHistory();
+  // keyboard: Enter sends, Shift+Enter newline
+  const input = document.getElementById('chat-input');
+  if (input) {
+    input.addEventListener('keydown', function(e) {
+      if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendChatMessage(); }
+    });
+    // Auto-grow: start at 1 line, expand as user types, shrink back when deleted
+    input.addEventListener('input', function() {
+      this.style.height = 'auto';
+      this.style.height = this.scrollHeight + 'px';
+    });
+  }
+}
+
+// ── §9b: Load history from backend on tab activation ─────────────
+async function loadChatHistory() {
+  try {
+    const resp = await fetch(
+      `${_ORIGIN}/api/chat/history?child_id=${encodeURIComponent(CHILD_ID)}&limit=20`,
+      { signal: createTimeoutSignal(15000) }
+    );
+    if (!resp.ok) throw new Error('HTTP ' + resp.status);
+    const data = await resp.json();
+    const msgs = data.messages || [];   // never null per spec
+    _chatMessages = msgs.map(m => ({ role: m.role, content: m.content }));
+    renderAllChatMessages();
+  } catch(e) {
+    console.warn('[chat] history load failed (starting fresh):', e.message);
+    // non-blocking: tab still opens with empty conversation
+  }
+}
+
+// ── Render full message list ──────────────────────────────────────
+function renderAllChatMessages() {
+  const container = document.getElementById('chat-messages');
+  if (!container) return;
+  // Remove everything except the empty-state placeholder
+  Array.from(container.children).forEach(c => { if (c.id !== 'chat-empty') c.remove(); });
+  if (_chatMessages.length === 0) {
+    document.getElementById('chat-empty').classList.remove('hidden');
+    return;
+  }
+  document.getElementById('chat-empty').classList.add('hidden');
+  _chatMessages.forEach(m => container.appendChild(buildChatBubble(m.role, m.content, false)));
+  scrollChatToBottom();
+}
+
+// ── Build a single message bubble ────────────────────────────────
+function buildChatBubble(role, content, streaming) {
+  const wrap = document.createElement('div');
+  wrap.className = role === 'user' ? 'flex justify-end' : 'flex justify-start';
+  if (role === 'user') {
+    wrap.innerHTML = `
+      <div class="chat-bubble-user max-w-[80%] px-4 py-2.5 text-sm leading-relaxed break-words">
+        ${escHtml(content)}
+      </div>`;
+  } else {
+    const idAttr = streaming ? 'id="chat-streaming-bubble"' : '';
+    const inner  = content
+      ? DOMPurify.sanitize(marked.parse(content))
+      : '<span class="chat-cursor"></span>';
+    wrap.innerHTML = `
+      <div ${idAttr} class="chat-bubble-asst max-w-[85%] px-4 py-3 text-sm leading-relaxed chat-md break-words">
+        ${inner}
+      </div>`;
+  }
+  return wrap;
+}
+
+function scrollChatToBottom() {
+  const c = document.getElementById('chat-messages');
+  if (c) requestAnimationFrame(() => { c.scrollTop = c.scrollHeight; });
+}
+
+// ── Send button handler ───────────────────────────────────────────
+function sendChatMessage() {
+  const input = document.getElementById('chat-input');
+  const text  = (input ? input.value : '').trim();
+  if (!text || _chatStreaming) return;
+  input.value = '';
+  input.style.height = '';   // reset auto-grow if any
+  startChat(CHILD_ID, text);
+}
+
+// ── Core chat function (POST + SSE via fetch+ReadableStream) ──────
+async function startChat(childId, message) {
+  if (_chatStreaming) return;
+  _chatStreaming = true;
+  _chatPendingMessage = message;
+
+  // Show user bubble
+  const container = document.getElementById('chat-messages');
+  document.getElementById('chat-empty').classList.add('hidden');
+  const _userBubbleWrap = buildChatBubble('user', message, false);
+  container.appendChild(_userBubbleWrap);
+  scrollChatToBottom();
+
+  // Disable input, reset per-response UI
+  setChatInputState(false);
+  resetChatResponseUI();
+
+  // Add streaming assistant bubble (empty with cursor)
+  const asstWrap = buildChatBubble('assistant', '', true);
+  container.appendChild(asstWrap);
+  scrollChatToBottom();
+
+  let asstText = '';
+
+  try {
+    const res = await fetch(`${_ORIGIN}/api/chat/stream`, {
+      method:  'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body:    JSON.stringify({
+        child_id: childId,
+        message,
+        language: 'en',
+        audience: getChatAudience(),
+      }),
+      signal: createTimeoutSignal(120000),
+    });
+
+    if (!res.ok) {
+      const j = await res.json().catch(() => ({}));
+      throw new Error(j.detail || 'HTTP ' + res.status);
+    }
+
+    const reader = res.body.getReader();
+
+    for await (const { type, data } of parseSseStream(reader)) {
+      let d;
+      try { d = JSON.parse(data); } catch { continue; }
+
+      switch (type) {
+        case 'metadata':
+          updateChatStatusBar(d);
+          injectSearchAnnotation(_userBubbleWrap, d);
+          break;
+
+        case 'plan':
+          // subqueries already merged into metadata event
+          break;
+
+        case 'retrieval':
+          updateChatRetrievalDot(d);
+          break;
+
+        case 'evidence_logs':
+          // Personal Logs — arrives immediately after Stage 1 (before Claude streams)
+          populateChatLogs(d.logs || []);
+          break;
+
+        case 'evidence_crawl':
+          // Clinical Evidence — arrives as soon as crawl DB query finishes
+          populateChatCrawled(d.crawled || []);
+          break;
+
+        case 'evidence_live':
+          // Live Sources — arrives as soon as live search finishes
+          populateChatLive(d.live || [], d.sites_attempted || 0, d.search_query || null);
+          if (d.search_query) appendLiveSearchChip(_userBubbleWrap, d.search_query);
+          break;
+
+        case 'evidence_refs':
+          // Legacy combined event — kept for compatibility
+          populateChatCrawled(d.crawled || []);
+          populateChatLive(d.live || []);
+          break;
+
+        case 'answer_chunk': {
+          asstText += (d.text || '');
+          const bubble = document.getElementById('chat-streaming-bubble');
+          if (bubble) {
+            bubble.innerHTML = DOMPurify.sanitize(marked.parse(asstText));
+            scrollChatToBottom();
+          }
+          break;
+        }
+
+        case 'evidence':
+          // Legacy fallback — kept for compatibility
+          populateChatLogs(d.logs || []);
+          populateChatCrawled(d.crawled || []);
+          populateChatLive(d.live || []);
+          break;
+
+        case 'done':
+          // stream finished — fall through to finally
+          break;
+      }
+    }
+
+    // Persist to in-memory history (backend already persisted to DB)
+    _chatMessages.push({ role: 'user',      content: message  });
+    _chatMessages.push({ role: 'assistant', content: asstText });
+
+    // Remove streaming marker from bubble
+    const bubble = document.getElementById('chat-streaming-bubble');
+    if (bubble) bubble.removeAttribute('id');
+
+  } catch(err) {
+    const bubble = document.getElementById('chat-streaming-bubble');
+    if (bubble) {
+      const msg = err.name === 'AbortError'
+        ? 'Request timed out.'
+        : (err.message || 'Connection lost.');
+      bubble.innerHTML =
+        `<span class="text-red-500">${escHtml(msg)}</span> ` +
+        `<button onclick="retryChatLast()" ` +
+        `class="text-indigo-600 underline text-xs bg-transparent border-0 cursor-pointer">Retry</button>`;
+      bubble.removeAttribute('id');
+    }
+    console.warn('[chat] stream error:', err.message);
+  } finally {
+    _chatStreaming = false;
+    setChatInputState(true);
+    // Reset any dots still blinking (sources that never returned) back to idle
+    ['logs','crawl','live'].forEach(s => {
+      const dot = document.getElementById('chat-dot-' + s);
+      if (dot && dot.classList.contains('chat-src-dot-pending'))
+        dot.className = 'chat-src-dot chat-src-dot-idle';
+    });
+    // Only hide skeleton if the real status bar is now visible (metadata event arrived).
+    // If stream errored before metadata, leave skeleton hidden and show a dash placeholder
+    // so the status area isn't completely blank.
+    const statusBar = document.getElementById('chat-status-bar');
+    const skeleton  = document.getElementById('chat-status-skeleton');
+    if (statusBar && !statusBar.classList.contains('hidden')) {
+      // real bar is showing — hide skeleton (already hidden by updateChatStatusBar)
+      if (skeleton) skeleton.classList.add('hidden');
+    } else {
+      // stream ended without metadata — hide skeleton, show bar with dash placeholders
+      if (skeleton) skeleton.classList.add('hidden');
+      if (statusBar) {
+        const intentEl = document.getElementById('chat-intent');
+        const modeEl   = document.getElementById('chat-mode');
+        if (intentEl && !intentEl.textContent) intentEl.textContent = '—';
+        if (modeEl   && !modeEl.textContent)   modeEl.textContent   = '—';
+        statusBar.classList.remove('hidden');
+      }
+    }
+  }
+}
+
+// ── Retry: re-send the last user message ─────────────────────────
+function retryChatLast() {
+  const msg = _chatPendingMessage;
+  if (!msg) return;
+  // Remove both failed assistant bubble (last) and failed user bubble (second-to-last)
+  const container = document.getElementById('chat-messages');
+  const last = container.lastElementChild;
+  const prev = last ? last.previousElementSibling : null;
+  if (last && last.id !== 'chat-empty') last.remove();
+  if (prev && prev.id !== 'chat-empty') prev.remove();
+  startChat(CHILD_ID, msg);
+}
+
+// ── Input enable / disable ────────────────────────────────────────
+function setChatInputState(enabled) {
+  const btn   = document.getElementById('chat-send-btn');
+  const input = document.getElementById('chat-input');
+  const label = document.getElementById('chat-send-label');
+  const icon  = document.getElementById('chat-send-icon');
+  if (btn)   btn.disabled   = !enabled;
+  if (input) input.disabled = !enabled;
+  if (label) label.textContent = enabled ? 'Send' : 'Sending…';
+  if (icon)  icon.style.display = enabled ? '' : 'none';
+  if (enabled && input) input.focus();
+}
+
+// ── Reset per-response UI pieces ─────────────────────────────────
+function resetChatResponseUI() {
+  // Status bar: show skeleton, hide real bar
+  document.getElementById('chat-status-bar').classList.add('hidden');
+  document.getElementById('chat-status-skeleton').classList.remove('hidden');
+  // Section header dots: yellow blinking = searching
+  ['logs','crawl','live'].forEach(s => {
+    const dot = document.getElementById('chat-dot-' + s);
+    if (dot) dot.className = 'chat-src-dot chat-src-dot-pending';
+  });
+  // Reset live-attempted badge and search-query row
+  const badge = document.getElementById('chat-live-attempted');
+  if (badge) { badge.textContent = ''; badge.classList.add('hidden'); }
+  // Evidence panels: searching placeholder
+  ['logs','crawled','live'].forEach(sec => {
+    const el = document.getElementById('chat-evidence-' + sec);
+    if (el) el.innerHTML =
+      '<p class="text-xs text-gray-400 text-center py-3 animate-pulse">Searching…</p>';
+  });
+}
+
+// ── Status bar (metadata event) ──────────────────────────────────
+
+const _INTENT_LABELS = {
+  BEHAVIOR_PATTERN: 'Behavior Pattern',
+  INTERVENTION:     'Intervention',
+  MEDICAL:          'Medical',
+  SAFETY:           '⚠️ Safety',
+};
+
+const _MODE_LABELS = {
+  HYBRID_LOG_FIRST:       'Answering from your child\'s history first, then research',
+  HYBRID_EVIDENCE_FIRST:  'Answering from research first, then your child\'s history',
+  EXPLAIN_PATTERN:        'Explaining a pattern found in your child\'s logs',
+  SAFETY_EXPANDED_MODE:   'Safety concern — expanded guidance mode',
+};
+
+// ── Search annotation (below user bubble, on metadata event) ─────
+function injectSearchAnnotation(userBubbleWrap, d) {
+  if (!userBubbleWrap) return;
+  // Remove any previous annotation on this bubble (shouldn't exist, but guard)
+  const old = userBubbleWrap.querySelector('.chat-search-annotation');
+  if (old) old.remove();
+
+  const rq = (d.rewritten_query || '').trim();
+  const sq = Array.isArray(d.sub_queries) ? d.sub_queries.filter(Boolean) : [];
+  if (!rq && !sq.length) return;
+
+  const allQ = rq ? [rq, ...sq] : sq;
+  const chips = allQ.map((q, i) =>
+    `<span class="inline-block text-xs px-2 py-0.5 rounded-full border ${i === 0
+      ? 'bg-indigo-50 border-indigo-200 text-indigo-600 font-medium'
+      : 'bg-gray-50 border-gray-200 text-gray-400'}">${escHtml(q)}</span>`
+  ).join('');
+
+  const ann = document.createElement('div');
+  ann.className = 'chat-search-annotation flex justify-end mt-1 mb-0.5';
+  ann.innerHTML = `
+    <div class="max-w-[85%] flex flex-wrap items-center gap-1.5">
+      <span class="text-xs text-gray-400 shrink-0">🔍 Searched:</span>
+      ${chips}
+    </div>`;
+  userBubbleWrap.insertAdjacentElement('afterend', ann);
+  scrollChatToBottom();
+}
+
+function appendLiveSearchChip(userBubbleWrap, searchQuery) {
+  if (!userBubbleWrap || !searchQuery) return;
+  const ann = userBubbleWrap.nextElementSibling;
+  if (!ann || !ann.classList.contains('chat-search-annotation')) return;
+  const container = ann.querySelector('.flex');
+  if (!container) return;
+  const chip = document.createElement('span');
+  chip.className = 'inline-block text-xs px-2 py-0.5 rounded-full border bg-indigo-100 border-indigo-300 text-indigo-700 font-medium';
+  chip.textContent = '🌐 ' + searchQuery;
+  container.appendChild(chip);
+  scrollChatToBottom();
+}
+
+function updateChatStatusBar(d) {
+  document.getElementById('chat-status-skeleton').classList.add('hidden');
+  const bar      = document.getElementById('chat-status-bar');
+  const intentEl = document.getElementById('chat-intent');
+  const modeEl   = document.getElementById('chat-mode');
+  const chipsEl  = document.getElementById('chat-trigger-chips');
+
+  const intentKey = (d.intent || '').trim();
+  const modeKey   = (d.mode   || '').trim();
+
+  if (intentEl) intentEl.textContent = _INTENT_LABELS[intentKey] || intentKey.replace(/_/g, ' ');
+  if (modeEl)   modeEl.textContent   = _MODE_LABELS[modeKey]     || modeKey.replace(/_/g, ' ');
+
+  if (chipsEl) {
+    const triggers = d.triggers || [];
+    chipsEl.innerHTML = triggers.length
+      ? triggers.map(t => `<span class="chat-chip">${escHtml(t.replace(/_/g,' '))}</span>`).join('')
+      : '<span class="text-xs text-gray-400 italic">none recorded yet</span>';
+  }
+
+  bar.classList.remove('hidden');
+}
+
+// ── Retrieval dots (retrieval event) ─────────────────────────────
+function updateChatRetrievalDot(d) {
+  // source: 'logs' | 'crawl' | 'crawl_db' | 'live'  (backend sends 'crawl', plan says 'crawl_db')
+  // status: 'ok' | 'done' | 'pending'
+  const dotIdMap = {
+    logs:     'chat-dot-logs',
+    crawl:    'chat-dot-crawl',
+    crawl_db: 'chat-dot-crawl',
+    live:     'chat-dot-live',
+  };
+  const dotId = dotIdMap[d.source];
+  if (!dotId) return;
+  const dot = document.getElementById(dotId);
+  if (!dot) return;
+  if (d.status === 'done' || d.status === 'ok') {
+    dot.className = 'chat-src-dot chat-src-dot-done';
+  } else if (d.status === 'pending') {
+    dot.className = 'chat-src-dot chat-src-dot-pending';
+  }
+  // Show how many websites were attempted for live search
+  if (d.source === 'live') {
+    const badge = document.getElementById('chat-live-attempted');
+    if (badge) {
+      const n = d.sites_attempted || 0;
+      if (n > 0) {
+        badge.textContent = `(${n} site${n !== 1 ? 's' : ''} searched)`;
+        badge.classList.remove('hidden');
+      }
+      // n===0: leave badge unchanged — evidence_live event will set it when ready
+    }
+  }
+}
+
+// ── 📋 Personal Logs panel (evidence_logs event) ─────────────────
+function populateChatLogs(logs) {
+  const logsEl = document.getElementById('chat-evidence-logs');
+  if (!logsEl) return;
+  if (!logs.length) {
+    logsEl.innerHTML = '<p class="text-xs text-gray-400 text-center py-2">No matching logs.</p>';
+    return;
+  }
+  logsEl.innerHTML = logs.map((l, i) => {
+    const sev    = parseInt(l.severity) || 0;
+    const sevCls = sev >= 4 ? 'bg-red-50 text-red-700' : sev >= 3 ? 'bg-yellow-50 text-yellow-700' : 'bg-green-50 text-green-700';
+    const date    = (l.logged_at || l.date || '').slice(0, 10);
+    const trigger = Array.isArray(l.triggers) ? l.triggers.join(', ') : (l.trigger || '');
+    const detail  = l.notes || l.context || l.text || '(no detail)';
+    return `
+      <div>
+        <div class="border border-gray-100 rounded-lg p-2 bg-gray-50 cursor-pointer hover:bg-indigo-50 transition"
+             onclick="toggleChatLogExpand(${i})">
+          <div class="flex flex-wrap items-center gap-1.5">
+            <span class="text-xs text-gray-500">${escHtml(date)}</span>
+            ${trigger ? `<span class="text-xs bg-indigo-50 text-indigo-700 border border-indigo-100 px-1.5 py-0.5 rounded-full">${escHtml(trigger)}</span>` : ''}
+            ${sev ? `<span class="text-xs px-1.5 py-0.5 rounded-full ${sevCls}">S${sev}</span>` : ''}
+          </div>
+        </div>
+        <div id="chat-log-expand-${i}" class="hidden text-xs text-gray-600 px-2 pt-1 pb-2 leading-relaxed bg-white border border-t-0 border-gray-100 rounded-b-lg">
+          ${escHtml(detail)}
+        </div>
+      </div>`;
+  }).join('');
+}
+
+// ── Shared helper: render a compact title + URL link row ─────────
+function _refRow(title, url) {
+  const label = (title || url || 'Link').trim();
+  const domain = url ? (() => { try { return new URL(url).hostname.replace(/^www\./,''); } catch { return url; } })() : '';
+  if (url) {
+    return `
+      <div class="py-1 border-b border-gray-100 last:border-0">
+        <a href="${escHtml(url)}" target="_blank" rel="noopener noreferrer"
+           class="text-xs font-medium text-indigo-700 hover:text-indigo-900 hover:underline leading-snug block break-words">${escHtml(label)}</a>
+        ${domain ? `<span class="text-xs text-gray-400">${escHtml(domain)}</span>` : ''}
+      </div>`;
+  }
+  return `<div class="py-1 border-b border-gray-100 last:border-0"><p class="text-xs font-medium text-gray-700 leading-snug break-words">${escHtml(label)}</p></div>`;
+}
+
+// ── 📘 Clinical Evidence (evidence_crawl event) ───────────────────
+function populateChatCrawled(crawled) {
+  const el = document.getElementById('chat-evidence-crawled');
+  if (!el) return;
+  if (!crawled.length) {
+    el.innerHTML = '<p class="text-xs text-gray-400 text-center py-2">No database results.</p>';
+  } else {
+    el.innerHTML = crawled.map(c => _refRow(c.title, c.url)).join('');
+  }
+}
+
+// ── 🌐 Live Sources (evidence_live event) ─────────────────────────
+function populateChatLive(live, sitesAttempted, searchQuery) {
+  const el = document.getElementById('chat-evidence-live');
+  if (!el) return;
+
+  if (!live.length) {
+    el.innerHTML = '<p class="text-xs text-gray-400 text-center py-2">No live results.</p>';
+  } else {
+    el.innerHTML = live.map(l => _refRow(l.title, l.url)).join('');
+  }
+  // Show sites-attempted badge if we have the count; never hide it here
+  // (hiding is handled by resetChatResponseUI / clearChatConversation only).
+  const badge = document.getElementById('chat-live-attempted');
+  if (badge) {
+    const n = sitesAttempted || 0;
+    if (n > 0) {
+      badge.textContent = `(${n} site${n !== 1 ? 's' : ''} searched)`;
+      badge.classList.remove('hidden');
+    }
+    // n===0 means backend didn't send count yet — leave badge as-is
+    // (updateChatRetrievalDot will have already set it from the retrieval event)
+  }
+}
+
+// ── Log expand/collapse (click to expand full log text) ───────────
+function toggleChatLogExpand(i) {
+  const el = document.getElementById('chat-log-expand-' + i);
+  if (el) el.classList.toggle('hidden');
+}
+
+// ── Collapsible evidence sections ────────────────────────────────
+function toggleChatSection(name) {
+  const body = document.getElementById('chat-evidence-' + name);
+  const chev = document.getElementById('chat-' + name + '-chevron');
+  if (!body) return;
+  const nowHidden = body.classList.toggle('hidden');
+  if (chev) chev.textContent = nowHidden ? '▸' : '▾';
+}
+
+// ── Clear / new conversation ──────────────────────────────────────
+function clearChatConversation() {
+  if (_chatStreaming) return;   // don't clear mid-stream
+  _chatMessages = [];
+  renderAllChatMessages();
+  // Reset status bar: show skeleton (waiting for next question), hide real bar
+  document.getElementById('chat-status-bar').classList.add('hidden');
+  document.getElementById('chat-status-skeleton').classList.remove('hidden');
+  // Reset dots, live-search attempt badge, and search-query row
+  ['logs','crawl','live'].forEach(s => {
+    const dot = document.getElementById('chat-dot-' + s);
+    if (dot) dot.className = 'chat-src-dot chat-src-dot-idle';
+  });
+  const badge = document.getElementById('chat-live-attempted');
+  if (badge) { badge.textContent = ''; badge.classList.add('hidden'); }
+  ['logs','crawled','live'].forEach(sec => {
+    const el = document.getElementById('chat-evidence-' + sec);
+    if (el) el.innerHTML =
+      '<p class="text-xs text-gray-400 text-center py-3">Ask a question to see results.</p>';
+    // Re-expand all sections after clear
+    const chev = document.getElementById('chat-' + sec + '-chevron');
+    if (chev) chev.textContent = '▾';
+    if (el) el.classList.remove('hidden');
+  });
+  const input = document.getElementById('chat-input');
+  if (input) input.focus();
+}
 
 // ── Service Worker registration (P-UI-2) ──────────────────────────
 if ('serviceWorker' in navigator) {
