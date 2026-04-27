@@ -260,323 +260,319 @@
   <!-- Date banner -->
   <div id="dl-date-banner" class="text-center text-gray-500 text-sm py-1 font-medium"></div>
 
-  <!-- Voice banner (shown after MAPPED state) -->
-  <div id="voice-banner" class="hidden bg-indigo-50 border border-indigo-200 rounded-xl px-4 py-3 text-sm text-indigo-800 space-y-1">
-    <p id="voice-banner-text" class="font-medium"></p>
-    <p id="voice-transcript" class="text-xs text-indigo-600 italic"></p>
-  </div>
-
-  <!-- Event log card -->
+  <!-- ── Capture card ──────────────────────────────────────────────── -->
   <div class="dl-card space-y-4">
-    <div class="dl-section-title">⚡ Log an Event</div>
-    <input type="hidden" id="log-child-id" value="default" />
+    <div class="dl-section-title">📝 Log Entry</div>
 
-    <div>
-      <label class="text-xs font-semibold text-gray-600 flex items-center gap-2 mb-1">
-        What happened? <span class="text-red-500">*</span>
-        <span id="vi-event" class="hidden text-indigo-500 text-xs font-normal">🎙 voice</span>
-      </label>
-      <textarea id="log-event" rows="2" placeholder="Describe the event…" class="dl-input"></textarea>
-      <p id="log-event-err" class="hidden text-xs text-red-500 mt-1"></p>
-    </div>
-
-    <div>
-      <label class="text-xs font-semibold text-gray-600 flex items-center gap-2 mb-2">
-        Triggers (select all that apply)
-        <span id="vi-triggers" class="hidden text-indigo-500 text-xs font-normal">🎙 voice</span>
-      </label>
-      <div id="log-trigger-tags" class="flex flex-wrap gap-2"></div>
-    </div>
-
-    <div>
-      <label class="text-xs font-semibold text-gray-600 flex items-center gap-2 mb-1">
-        Context
-        <span id="vi-context" class="hidden text-indigo-500 text-xs font-normal">🎙 voice</span>
-      </label>
-      <input type="text" id="log-context" placeholder="Where, when, what was happening…" class="dl-input" />
-    </div>
-
-    <div>
-      <label class="text-xs font-semibold text-gray-600 flex items-center gap-2 mb-1">
-        Response / what was done
-        <span id="vi-response" class="hidden text-indigo-500 text-xs font-normal">🎙 voice</span>
-      </label>
-      <input type="text" id="log-response" placeholder="How did you respond?" class="dl-input" />
-    </div>
-
-    <div>
-      <label class="text-xs font-semibold text-gray-600 flex items-center gap-2 mb-1">
-        Outcome
-        <span id="vi-outcome" class="hidden text-indigo-500 text-xs font-normal">🎙 voice</span>
-      </label>
-      <input type="text" id="log-outcome" placeholder="How did it resolve?" class="dl-input" />
-    </div>
-
-    <div>
-      <label class="text-xs font-semibold text-gray-600 flex items-center gap-2 mb-1">
-        Severity <span class="text-red-500">*</span>
-        <span class="font-normal text-gray-400">(1 = mild · 5 = severe)</span>
-        <span id="vi-severity" class="hidden text-indigo-500 text-xs font-normal">🎙 voice</span>
-      </label>
-      <div class="flex items-center gap-3">
-        <input type="range" id="log-severity" min="1" max="5" value="3"
-               oninput="document.getElementById('log-severity-val').textContent=this.value"
-               class="flex-1 accent-indigo-600" />
-        <span id="log-severity-val" class="text-sm font-bold text-indigo-600 w-4 text-center">3</span>
-      </div>
-      <p id="log-severity-err" class="hidden text-xs text-red-500 mt-1"></p>
-    </div>
-
-    <div>
-      <label class="text-xs font-semibold text-gray-600 flex items-center gap-2 mb-2">
-        Tags (optional)
-        <span id="vi-tags" class="hidden text-indigo-500 text-xs font-normal">🎙 voice</span>
-      </label>
-      <div id="log-tags" class="flex flex-wrap gap-2"></div>
-    </div>
-
-    <div>
-      <label class="text-xs font-semibold text-gray-600 flex items-center gap-2 mb-1">
-        Notes
-        <span id="vi-notes" class="hidden text-indigo-500 text-xs font-normal">🎙 voice</span>
-      </label>
-      <textarea id="log-notes" rows="2" placeholder="Anything else…" class="dl-input"></textarea>
-    </div>
-  </div>
-
-  <!-- Daily Ratings card -->
-  <div class="dl-card space-y-4">
-    <div class="dl-section-title">📊 Daily Ratings <span class="font-normal text-gray-400 text-xs">(all optional)</span></div>
-
-    <div>
-      <label class="text-xs font-semibold text-gray-600 flex justify-between mb-1">
-        <span>Sleep Quality <span id="vi-sleep_quality" class="hidden text-indigo-500 font-normal">🎙 voice</span></span>
-        <span class="font-normal text-gray-400">1=very poor · 5=excellent</span>
-      </label>
-      <div class="flex items-center gap-3">
-        <input type="range" id="ci-sleep_quality" min="1" max="5" value="3"
-               oninput="document.getElementById('ci-sleep_quality-val').textContent=this.value"
-               class="flex-1 accent-indigo-600" />
-        <span id="ci-sleep_quality-val" class="text-sm font-bold text-indigo-600 w-4 text-center">3</span>
-      </div>
-    </div>
-
-    <div>
-      <label class="text-xs font-semibold text-gray-600 flex justify-between mb-1">
-        <span>Mood <span id="vi-mood" class="hidden text-indigo-500 font-normal">🎙 voice</span></span>
-        <span class="font-normal text-gray-400">1=very low · 5=very positive</span>
-      </label>
-      <div class="flex items-center gap-3">
-        <input type="range" id="ci-mood" min="1" max="5" value="3"
-               oninput="document.getElementById('ci-mood-val').textContent=this.value"
-               class="flex-1 accent-indigo-600" />
-        <span id="ci-mood-val" class="text-sm font-bold text-indigo-600 w-4 text-center">3</span>
-      </div>
-    </div>
-
-    <div>
-      <label class="text-xs font-semibold text-gray-600 flex justify-between mb-1">
-        <span>Sensory Sensitivity <span id="vi-sensory_sensitivity" class="hidden text-indigo-500 font-normal">🎙 voice</span></span>
-        <span class="font-normal text-gray-400">1=overwhelmed · 5=no issues</span>
-      </label>
-      <div class="flex items-center gap-3">
-        <input type="range" id="ci-sensory_sensitivity" min="1" max="5" value="3"
-               oninput="document.getElementById('ci-sensory_sensitivity-val').textContent=this.value"
-               class="flex-1 accent-indigo-600" />
-        <span id="ci-sensory_sensitivity-val" class="text-sm font-bold text-indigo-600 w-4 text-center">3</span>
-      </div>
-    </div>
-
-    <div>
-      <label class="text-xs font-semibold text-gray-600 flex justify-between mb-1">
-        <span>Appetite <span id="vi-appetite" class="hidden text-indigo-500 font-normal">🎙 voice</span></span>
-        <span class="font-normal text-gray-400">1=refused food · 5=ate well</span>
-      </label>
-      <div class="flex items-center gap-3">
-        <input type="range" id="ci-appetite" min="1" max="5" value="3"
-               oninput="document.getElementById('ci-appetite-val').textContent=this.value"
-               class="flex-1 accent-indigo-600" />
-        <span id="ci-appetite-val" class="text-sm font-bold text-indigo-600 w-4 text-center">3</span>
-      </div>
-    </div>
-
-    <div>
-      <label class="text-xs font-semibold text-gray-600 flex justify-between mb-1">
-        <span>Social Tolerance <span id="vi-social_tolerance" class="hidden text-indigo-500 font-normal">🎙 voice</span></span>
-        <span class="font-normal text-gray-400">1=withdrawn · 5=engaged</span>
-      </label>
-      <div class="flex items-center gap-3">
-        <input type="range" id="ci-social_tolerance" min="1" max="5" value="3"
-               oninput="document.getElementById('ci-social_tolerance-val').textContent=this.value"
-               class="flex-1 accent-indigo-600" />
-        <span id="ci-social_tolerance-val" class="text-sm font-bold text-indigo-600 w-4 text-center">3</span>
-      </div>
-    </div>
-
-    <div>
-      <label class="text-xs font-semibold text-gray-600 flex justify-between mb-1">
-        <span>Meltdown Count <span id="vi-meltdown_count" class="hidden text-indigo-500 font-normal">🎙 voice</span></span>
-        <span class="font-normal text-gray-400">0 or more</span>
-      </label>
-      <input type="number" id="ci-meltdown_count" min="0" value="0" class="dl-input w-24" />
-    </div>
-
-    <div>
-      <label class="text-xs font-semibold text-gray-600 flex justify-between mb-1">
-        <span>Routine Adherence <span id="vi-routine_adherence" class="hidden text-indigo-500 font-normal">🎙 voice</span></span>
-        <span class="font-normal text-gray-400">1=major disruptions · 5=fully followed</span>
-      </label>
-      <div class="flex items-center gap-3">
-        <input type="range" id="ci-routine_adherence" min="1" max="5" value="3"
-               oninput="document.getElementById('ci-routine_adherence-val').textContent=this.value"
-               class="flex-1 accent-indigo-600" />
-        <span id="ci-routine_adherence-val" class="text-sm font-bold text-indigo-600 w-4 text-center">3</span>
-      </div>
-    </div>
-
-    <div>
-      <label class="text-xs font-semibold text-gray-600 flex justify-between mb-1">
-        <span>Communication <span id="vi-communication_ease" class="hidden text-indigo-500 font-normal">🎙 voice</span></span>
-        <span class="font-normal text-gray-400">1=very difficult · 5=fluent</span>
-      </label>
-      <div class="flex items-center gap-3">
-        <input type="range" id="ci-communication_ease" min="1" max="5" value="3"
-               oninput="document.getElementById('ci-communication_ease-val').textContent=this.value"
-               class="flex-1 accent-indigo-600" />
-        <span id="ci-communication_ease-val" class="text-sm font-bold text-indigo-600 w-4 text-center">3</span>
-      </div>
-    </div>
-
-    <div>
-      <label class="text-xs font-semibold text-gray-600 flex justify-between mb-1">
-        <span>Physical Activity <span id="vi-physical_activity" class="hidden text-indigo-500 font-normal">🎙 voice</span></span>
-        <span class="font-normal text-gray-400">1=none · 5=very active</span>
-      </label>
-      <div class="flex items-center gap-3">
-        <input type="range" id="ci-physical_activity" min="1" max="5" value="3"
-               oninput="document.getElementById('ci-physical_activity-val').textContent=this.value"
-               class="flex-1 accent-indigo-600" />
-        <span id="ci-physical_activity-val" class="text-sm font-bold text-indigo-600 w-4 text-center">3</span>
-      </div>
-    </div>
-
-    <div>
-      <label class="text-xs font-semibold text-gray-600 flex justify-between mb-1">
-        <span>Caregiver Day <span id="vi-caregiver_rating" class="hidden text-indigo-500 font-normal">🎙 voice</span></span>
-        <span class="font-normal text-gray-400">1=very hard · 5=great day</span>
-      </label>
-      <div class="flex items-center gap-3">
-        <input type="range" id="ci-caregiver_rating" min="1" max="5" value="3"
-               oninput="document.getElementById('ci-caregiver_rating-val').textContent=this.value"
-               class="flex-1 accent-indigo-600" />
-        <span id="ci-caregiver_rating-val" class="text-sm font-bold text-indigo-600 w-4 text-center">3</span>
-      </div>
-    </div>
-
-    <div>
-      <label class="text-xs font-semibold text-gray-600 flex items-center gap-2 mb-1">
-        Ratings Notes
-        <span id="vi-checkin_notes" class="hidden text-indigo-500 text-xs font-normal">🎙 voice</span>
-      </label>
-      <textarea id="ci-notes" rows="2" placeholder="Anything worth noting today…"
-                class="dl-input" maxlength="5000"></textarea>
-      <p class="text-right text-xs text-gray-400 mt-1">
-        <span id="ci-notes-count">0</span>/5000
-      </p>
-    </div>
-  </div>
-
-  <!-- Record & Transcribe — full-form voice fill -->
-  <div class="dl-card">
-    <button id="dl-record-btn" onclick="dlVoiceFill()"
-            class="dl-btn-secondary w-full justify-center py-3 text-sm font-semibold
-                   border-indigo-300 text-indigo-700 hover:bg-indigo-50">
-      🎙️ Record &amp; Transcribe (fill whole form)
-    </button>
-    <p id="dl-record-status" class="text-xs text-gray-400 mt-2 text-center"></p>
-  </div>
-
-
-  <!-- Confirmation form shown after transcription (P-UI-3) -->
-  <div id="audio-confirm-section" class="hidden dl-card space-y-4">
-    <div class="dl-section-title">✏️ Review &amp; Confirm</div>
-    <div class="bg-gray-50 rounded-xl border border-gray-200 p-3">
-      <p class="text-xs font-semibold text-gray-500 mb-1">What you said (read-only):</p>
-      <p id="audio-raw-text" class="text-sm text-gray-700 italic leading-relaxed"></p>
-    </div>
-    <div id="audio-warnings" class="hidden bg-amber-50 border border-amber-200 rounded-xl p-3 text-xs text-amber-800 space-y-1"></div>
-    <div>
-      <label class="text-xs font-semibold text-gray-600 block mb-1">Trigger type <span class="text-red-500">*</span></label>
-      <select id="audio-trigger-type" class="dl-input"></select>
-    </div>
-    <div>
-      <label class="text-xs font-semibold text-gray-600 flex justify-between mb-1">
-        <span>Severity <span class="text-red-500">*</span></span>
-        <span class="font-normal text-gray-400">1=mild · 5=severe</span>
-      </label>
-      <div class="flex items-center gap-3">
-        <input type="range" id="audio-severity" min="1" max="5" value="3"
-               oninput="document.getElementById('audio-severity-val').textContent=this.value"
-               class="flex-1 accent-indigo-600" />
-        <span id="audio-severity-val" class="text-sm font-bold text-indigo-600 w-4 text-center">3</span>
-      </div>
-    </div>
-    <div>
-      <label class="text-xs font-semibold text-gray-600 block mb-1">Context</label>
-      <input type="text" id="audio-context" class="dl-input" placeholder="Where, when, what was happening…" />
-    </div>
-    <div>
-      <label class="text-xs font-semibold text-gray-600 block mb-1">Outcome hint</label>
-      <input type="text" id="audio-outcome-hint" class="dl-input" placeholder="How did it resolve?" />
-    </div>
-    <div class="text-xs text-gray-500 bg-gray-50 rounded-xl p-3">
-      <p class="font-semibold text-gray-600 mb-1">Extraction confidence (display only)</p>
-      <div id="audio-confidence" class="flex flex-wrap gap-3"></div>
-    </div>
-    <p id="audio-confirm-error" class="hidden text-xs text-red-600"></p>
+    <!-- Two capture buttons side by side -->
     <div class="flex gap-2">
-      <button onclick="confirmAudioLog()" id="audio-confirm-btn"
-              class="flex-1 py-3 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-xl text-sm transition flex items-center justify-center gap-2">
-        ✅ Confirm &amp; Save
+      <button id="dl-record-btn" onclick="dlVoiceCapture()"
+              class="dl-btn-secondary flex-1 justify-center py-3 text-sm font-semibold
+                     border-indigo-300 text-indigo-700 hover:bg-indigo-50">
+        🎙️ Record Voice
       </button>
-      <button onclick="cancelAudioLog()"
-              class="py-3 px-4 border border-gray-300 rounded-xl text-sm text-gray-600 hover:border-gray-400 transition">
+      <button onclick="toggleMealOptions()"
+              class="dl-btn-secondary flex-1 justify-center py-3 text-sm font-semibold
+                     border-indigo-300 text-indigo-700 hover:bg-indigo-50">
+        📷 Log Meal
+      </button>
+    </div>
+    <!-- Meal source picker — shown when Log Meal is tapped -->
+    <div id="log-meal-options" class="hidden flex gap-2">
+      <button onclick="document.getElementById('log-photo-camera').click()"
+              class="dl-btn-secondary flex-1 justify-center py-2 text-sm
+                     border-indigo-200 text-indigo-700 hover:bg-indigo-50">
+        📸 Take Photo
+      </button>
+      <button onclick="document.getElementById('log-photo-album').click()"
+              class="dl-btn-secondary flex-1 justify-center py-2 text-sm
+                     border-indigo-200 text-indigo-700 hover:bg-indigo-50">
+        🖼️ From Album
+      </button>
+    </div>
+    <!-- Camera input (forces rear camera) -->
+    <input type="file" id="log-photo-camera" accept="image/*" capture="environment"
+           class="hidden" onchange="handleLogPhotoSelect(event)" />
+    <!-- Album input (no capture — lets user pick from gallery) -->
+    <input type="file" id="log-photo-album" accept="image/*"
+           class="hidden" onchange="handleLogPhotoSelect(event)" />
+    <!-- Legacy alias kept so any existing JS references still work -->
+    <input type="file" id="log-photo-input" accept="image/*" capture="environment"
+           class="hidden" onchange="handleLogPhotoSelect(event)" />
+    <p id="dl-record-status" class="text-xs text-gray-400 text-center hidden"></p>
+
+    <!-- Voice/photo transcription output (hidden until capture fires) -->
+    <div id="log-capture-result" class="space-y-3">
+      <div id="log-raw-display" class="bg-indigo-50 border border-indigo-200 rounded-xl px-4 py-3 hidden">
+        <p class="text-xs font-semibold text-indigo-600 mb-1">Transcribed:</p>
+        <p id="log-raw-text" class="text-sm text-indigo-800 italic leading-relaxed"></p>
+      </div>
+      <div id="log-photo-preview-wrap" class="hidden">
+        <img id="log-photo-preview-img" src="" alt=""
+             class="max-h-40 rounded-xl object-contain shadow mx-auto block" />
+      </div>
+      <!-- Meal nutrition analysis — shown right below the photo -->
+      <div id="log-food-result" class="hidden bg-green-50 border border-green-200 rounded-xl px-4 py-3 space-y-2 text-sm text-gray-700">
+        <p class="text-xs font-semibold text-green-700">🥗 Meal Analysis</p>
+        <div id="log-food-result-body"></div>
+      </div>
+    </div><!-- /#log-capture-result -->
+
+    <!-- ── Entry fields — always visible ──────────────────────────── -->
+    <div id="log-event-fields" class="space-y-3">
+
+      <!-- Notes / description -->
+      <div>
+        <label class="text-xs font-semibold text-gray-600 mb-1 block">
+          Notes / description
+          <span id="vi-notes" class="hidden text-indigo-500 font-normal ml-2">🎙 voice</span>
+        </label>
+        <textarea id="log-notes" rows="2" placeholder="What happened today…"
+                  class="dl-input"></textarea>
+      </div>
+
+      <!-- Triggers -->
+      <div>
+        <label class="text-xs font-semibold text-gray-600 flex items-center gap-2 mb-2">
+          Triggers
+          <span id="vi-triggers" class="hidden text-indigo-500 font-normal">🎙 voice</span>
+        </label>
+        <div id="log-trigger-tags" class="flex flex-wrap gap-2"></div>
+      </div>
+
+      <!-- Context -->
+      <div id="log-context-wrap">
+        <label class="text-xs font-semibold text-gray-600 flex items-center gap-2 mb-1">
+          Context
+          <span id="vi-context" class="hidden text-indigo-500 font-normal">🎙 voice</span>
+        </label>
+        <input type="text" id="log-context" class="dl-input"
+               placeholder="Where, when, what was happening…" />
+      </div>
+
+      <!-- Response -->
+      <div id="log-response-wrap">
+        <label class="text-xs font-semibold text-gray-600 flex items-center gap-2 mb-1">
+          Response
+          <span id="vi-response" class="hidden text-indigo-500 font-normal">🎙 voice</span>
+        </label>
+        <input type="text" id="log-response" class="dl-input"
+               placeholder="How did you respond?" />
+      </div>
+
+      <!-- Outcome -->
+      <div id="log-outcome-wrap">
+        <label class="text-xs font-semibold text-gray-600 flex items-center gap-2 mb-1">
+          Outcome
+          <span id="vi-outcome" class="hidden text-indigo-500 font-normal">🎙 voice</span>
+        </label>
+        <input type="text" id="log-outcome" class="dl-input"
+               placeholder="How did it resolve?" />
+      </div>
+
+      <!-- Severity -->
+      <div id="log-severity-wrap">
+        <label class="text-xs font-semibold text-gray-600 flex items-center gap-2 mb-1">
+          Severity
+          <span class="font-normal text-gray-400">(1=mild · 5=severe)</span>
+          <span id="vi-severity" class="hidden text-indigo-500 font-normal">🎙 voice</span>
+        </label>
+        <div class="flex items-center gap-3">
+          <input type="range" id="log-severity" min="1" max="5" value="3"
+                 oninput="document.getElementById('log-severity-val').textContent=this.value"
+                 class="flex-1 accent-indigo-600" />
+          <span id="log-severity-val" class="text-sm font-bold text-indigo-600 w-4 text-center">3</span>
+        </div>
+      </div>
+
+      <!-- Tags -->
+      <div id="log-tags-wrap">
+        <label class="text-xs font-semibold text-gray-600 flex items-center gap-2 mb-2">
+          Tags
+          <span id="vi-tags" class="hidden text-indigo-500 font-normal">🎙 voice</span>
+        </label>
+        <div id="log-tags" class="flex flex-wrap gap-2"></div>
+      </div>
+
+    </div><!-- /#log-event-fields -->
+
+    <!-- ── Daily Ratings — always visible ─────────────────────────── -->
+    <div class="border-t border-gray-100 pt-3 space-y-3">
+      <p class="text-xs font-semibold text-gray-500">📊 Daily Ratings</p>
+
+      <div id="log-rating-row-sleep_quality">
+        <label class="text-xs font-semibold text-gray-600 flex justify-between mb-1">
+          <span>Sleep Quality <span id="vi-sleep_quality" class="hidden text-indigo-500 font-normal">🎙</span></span>
+          <span class="font-normal text-gray-400">1=very poor · 5=excellent</span>
+        </label>
+        <div class="flex items-center gap-3">
+          <input type="range" id="ci-sleep_quality" min="1" max="5" value="3"
+                 oninput="document.getElementById('ci-sleep_quality-val').textContent=this.value"
+                 class="flex-1 accent-indigo-600" />
+          <span id="ci-sleep_quality-val" class="text-sm font-bold text-indigo-600 w-4 text-center">3</span>
+        </div>
+      </div>
+
+      <div id="log-rating-row-mood">
+        <label class="text-xs font-semibold text-gray-600 flex justify-between mb-1">
+          <span>Mood <span id="vi-mood" class="hidden text-indigo-500 font-normal">🎙</span></span>
+          <span class="font-normal text-gray-400">1=very low · 5=very positive</span>
+        </label>
+        <div class="flex items-center gap-3">
+          <input type="range" id="ci-mood" min="1" max="5" value="3"
+                 oninput="document.getElementById('ci-mood-val').textContent=this.value"
+                 class="flex-1 accent-indigo-600" />
+          <span id="ci-mood-val" class="text-sm font-bold text-indigo-600 w-4 text-center">3</span>
+        </div>
+      </div>
+
+      <div id="log-rating-row-sensory_sensitivity">
+        <label class="text-xs font-semibold text-gray-600 flex justify-between mb-1">
+          <span>Sensory Sensitivity <span id="vi-sensory_sensitivity" class="hidden text-indigo-500 font-normal">🎙</span></span>
+          <span class="font-normal text-gray-400">1=overwhelmed · 5=no issues</span>
+        </label>
+        <div class="flex items-center gap-3">
+          <input type="range" id="ci-sensory_sensitivity" min="1" max="5" value="3"
+                 oninput="document.getElementById('ci-sensory_sensitivity-val').textContent=this.value"
+                 class="flex-1 accent-indigo-600" />
+          <span id="ci-sensory_sensitivity-val" class="text-sm font-bold text-indigo-600 w-4 text-center">3</span>
+        </div>
+      </div>
+
+      <div id="log-rating-row-appetite">
+        <label class="text-xs font-semibold text-gray-600 flex justify-between mb-1">
+          <span>Appetite <span id="vi-appetite" class="hidden text-indigo-500 font-normal">🎙</span></span>
+          <span class="font-normal text-gray-400">1=refused food · 5=ate well</span>
+        </label>
+        <div class="flex items-center gap-3">
+          <input type="range" id="ci-appetite" min="1" max="5" value="3"
+                 oninput="document.getElementById('ci-appetite-val').textContent=this.value"
+                 class="flex-1 accent-indigo-600" />
+          <span id="ci-appetite-val" class="text-sm font-bold text-indigo-600 w-4 text-center">3</span>
+        </div>
+      </div>
+
+      <div id="log-rating-row-social_tolerance">
+        <label class="text-xs font-semibold text-gray-600 flex justify-between mb-1">
+          <span>Social Tolerance <span id="vi-social_tolerance" class="hidden text-indigo-500 font-normal">🎙</span></span>
+          <span class="font-normal text-gray-400">1=withdrawn · 5=engaged</span>
+        </label>
+        <div class="flex items-center gap-3">
+          <input type="range" id="ci-social_tolerance" min="1" max="5" value="3"
+                 oninput="document.getElementById('ci-social_tolerance-val').textContent=this.value"
+                 class="flex-1 accent-indigo-600" />
+          <span id="ci-social_tolerance-val" class="text-sm font-bold text-indigo-600 w-4 text-center">3</span>
+        </div>
+      </div>
+
+      <div id="log-rating-row-meltdown_count">
+        <label class="text-xs font-semibold text-gray-600 flex justify-between mb-1">
+          <span>Meltdown Count <span id="vi-meltdown_count" class="hidden text-indigo-500 font-normal">🎙</span></span>
+          <span class="font-normal text-gray-400">0 or more</span>
+        </label>
+        <input type="number" id="ci-meltdown_count" min="0" value="0" class="dl-input w-24" />
+      </div>
+
+      <div id="log-rating-row-routine_adherence">
+        <label class="text-xs font-semibold text-gray-600 flex justify-between mb-1">
+          <span>Routine Adherence <span id="vi-routine_adherence" class="hidden text-indigo-500 font-normal">🎙</span></span>
+          <span class="font-normal text-gray-400">1=major disruptions · 5=fully followed</span>
+        </label>
+        <div class="flex items-center gap-3">
+          <input type="range" id="ci-routine_adherence" min="1" max="5" value="3"
+                 oninput="document.getElementById('ci-routine_adherence-val').textContent=this.value"
+                 class="flex-1 accent-indigo-600" />
+          <span id="ci-routine_adherence-val" class="text-sm font-bold text-indigo-600 w-4 text-center">3</span>
+        </div>
+      </div>
+
+      <div id="log-rating-row-communication_ease">
+        <label class="text-xs font-semibold text-gray-600 flex justify-between mb-1">
+          <span>Communication <span id="vi-communication_ease" class="hidden text-indigo-500 font-normal">🎙</span></span>
+          <span class="font-normal text-gray-400">1=very difficult · 5=fluent</span>
+        </label>
+        <div class="flex items-center gap-3">
+          <input type="range" id="ci-communication_ease" min="1" max="5" value="3"
+                 oninput="document.getElementById('ci-communication_ease-val').textContent=this.value"
+                 class="flex-1 accent-indigo-600" />
+          <span id="ci-communication_ease-val" class="text-sm font-bold text-indigo-600 w-4 text-center">3</span>
+        </div>
+      </div>
+
+      <div id="log-rating-row-physical_activity">
+        <label class="text-xs font-semibold text-gray-600 flex justify-between mb-1">
+          <span>Physical Activity <span id="vi-physical_activity" class="hidden text-indigo-500 font-normal">🎙</span></span>
+          <span class="font-normal text-gray-400">1=none · 5=very active</span>
+        </label>
+        <div class="flex items-center gap-3">
+          <input type="range" id="ci-physical_activity" min="1" max="5" value="3"
+                 oninput="document.getElementById('ci-physical_activity-val').textContent=this.value"
+                 class="flex-1 accent-indigo-600" />
+          <span id="ci-physical_activity-val" class="text-sm font-bold text-indigo-600 w-4 text-center">3</span>
+        </div>
+      </div>
+
+      <div id="log-rating-row-caregiver_rating">
+        <label class="text-xs font-semibold text-gray-600 flex justify-between mb-1">
+          <span>Caregiver Day <span id="vi-caregiver_rating" class="hidden text-indigo-500 font-normal">🎙</span></span>
+          <span class="font-normal text-gray-400">1=very hard · 5=great day</span>
+        </label>
+        <div class="flex items-center gap-3">
+          <input type="range" id="ci-caregiver_rating" min="1" max="5" value="3"
+                 oninput="document.getElementById('ci-caregiver_rating-val').textContent=this.value"
+                 class="flex-1 accent-indigo-600" />
+          <span id="ci-caregiver_rating-val" class="text-sm font-bold text-indigo-600 w-4 text-center">3</span>
+        </div>
+      </div>
+    </div><!-- /daily ratings -->
+
+    <!-- Submit / edit mode buttons — always visible -->
+    <div id="log-action-bar" class="flex gap-2 pt-2">
+      <button id="log-submit-btn" onclick="submitLogEntry()"
+              class="flex-1 py-3 bg-indigo-600 hover:bg-indigo-700 text-white font-bold
+                     rounded-xl text-sm transition disabled:opacity-50">
+        Save Entry ✅
+      </button>
+      <button id="log-cancel-edit-btn" onclick="resetLogForm()" class="hidden
+              py-3 px-4 border border-gray-300 rounded-xl text-sm text-gray-600
+              hover:border-gray-400 transition">
         Cancel
       </button>
     </div>
-  </div>
+    <p id="log-submit-status" class="text-xs text-center text-gray-500 hidden"></p>
+    <p id="log-submit-err"    class="text-xs text-center text-red-500 hidden"></p>
+  </div><!-- /capture card -->
 
-  <!-- Intervention tracking -->
+  <!-- Open Interventions (unchanged) -->
   <div class="dl-card">
     <div class="dl-section-title">🎯 Open Interventions</div>
     <div id="intervention-list"><p class="text-xs text-gray-400">Loading…</p></div>
   </div>
 
-  <div id="log-field-errors" class="hidden text-xs text-red-600 space-y-1"></div>
+  <!-- Today's Entries (unified event + food logs for today) -->
+  <div class="dl-card space-y-3">
+    <div class="dl-section-title">📋 Today's Entries</div>
+    <div id="today-entries-list">
+      <p class="text-xs text-gray-400">Loading…</p>
+    </div>
+  </div>
 
-  <button id="log-submit-btn" onclick="submitCombined()"
-          class="w-full py-4 bg-indigo-600 hover:bg-indigo-700 text-white font-bold
-                 rounded-2xl text-base transition flex items-center justify-center gap-2 shadow-sm">
-    Submit Log ✅
-  </button>
-  <div id="log-submit-status" class="hidden text-center text-sm pb-4"></div>
-
-  <!-- Past Logs history (P-UI-7) — requires collect offset param -->
+  <!-- Past Logs (click a row to load for editing) -->
   <div class="dl-card mt-2">
-    <div class="dl-section-title">📋 Past Logs</div>
+    <div class="dl-section-title">🗂 Past Logs</div>
+    <p class="text-xs text-gray-400 mb-2">Tap a log to review or correct it.</p>
     <div id="logs-history-list" class="space-y-2 min-h-[2rem]">
       <p class="text-xs text-gray-400">Loading…</p>
     </div>
     <p id="logs-history-empty" class="hidden text-xs text-gray-500 text-center py-2">No past logs.</p>
-    <p id="logs-history-end" class="hidden text-xs text-gray-400 text-center py-2 mt-2">All logs loaded.</p>
+    <p id="logs-history-end"   class="hidden text-xs text-gray-400 text-center py-2 mt-2">All logs loaded.</p>
     <button id="logs-load-more" onclick="loadMoreLogs()"
-            class="hidden mt-3 w-full dl-btn-secondary text-xs justify-center">
-      Load more
-    </button>
+            class="hidden mt-3 w-full dl-btn-secondary text-xs justify-center">Load more</button>
   </div>
 
 </main>
 </div><!-- /panel-log -->
+
 
 <!-- ════════════════════════════════════════════════════════════════
      PANEL 3 — INSIGHTS
@@ -838,6 +834,7 @@
   </div><!-- /#chat-main -->
 </div><!-- /#chat-tab-panel -->
 </div><!-- /panel-chat -->
+
 
 <!-- ── Sources Modal (P3) ──────────────────────────────────────── -->
 <div id="sources-modal" class="modal-overlay hidden" onclick="if(event.target===this)closeSourcesModal()">
@@ -1596,7 +1593,7 @@ function switchTab(name) {
     else { btn.classList.remove('tab-btn-active'); btn.classList.add('tab-btn-inactive'); }
   });
   localStorage.setItem('active_tab',name);
-  if(name==='log')           { loadInterventions(); loadTodayEntry(); loadLogsHistory(); }
+  if(name==='log')             initLogTab();
   else if(name==='insights')   loadInsights();
   else if(name==='clinician')  loadClinicianReport();
   else if(name==='settings')   loadSettings();
@@ -1604,115 +1601,125 @@ function switchTab(name) {
 }
 
 // ════════════════════════════════════════════════════════════════
-// LOAD TODAY'S EXISTING ENTRY INTO LOG FORM
+// TAB 2 — LOG TODAY (redesigned)
 // ════════════════════════════════════════════════════════════════
-async function loadTodayEntry() {
-  const today = localDateStr();
-  try {
-    // Fetch recent log entries and pick only today's (local date)
-    const logsResp = await fetch(COLLECT_API + '/logs?days=2&limit=50');
-    if (logsResp.ok) {
-      const data = await logsResp.json();
-      const todayLog = (data.logs || []).find(l => l.logged_at && localDateStr(l.logged_at) === today);
-      if (todayLog) {
-        voiceLogId = todayLog.id;
-        voiceLogDate = today;
-        document.getElementById('log-event').value = todayLog.event || '';
-        document.getElementById('log-context').value = todayLog.context || '';
-        document.getElementById('log-response').value = todayLog.response || '';
-        document.getElementById('log-outcome').value = todayLog.outcome || '';
-        document.getElementById('log-notes').value = todayLog.notes || '';
-        if (todayLog.severity) {
-          document.getElementById('log-severity').value = todayLog.severity;
-          document.getElementById('log-severity-val').textContent = todayLog.severity;
-        }
-        selectedTriggers.clear();
-        (todayLog.triggers || []).forEach(t => selectedTriggers.add(t));
-        buildTagPills('log-trigger-tags', TRIGGER_OPTIONS, selectedTriggers);
-        selectedTags.clear();
-        (todayLog.tags || []).forEach(t => selectedTags.add(t));
-        buildTagPills('log-tags', TAG_OPTIONS, selectedTags);
-        // Switch button to Update Log
-        const btn = document.getElementById('log-submit-btn');
-        if (btn) btn.innerHTML = 'Update Log ✅';
-      }
-    }
-  } catch(e) { /* silent — form stays blank */ }
 
-  try {
-    // Fetch today's check-in ratings
-    const ciResp = await fetch(COLLECT_API + '/daily-checks/' + today);
-    if (ciResp.ok) {
-      const ci = await ciResp.json();
-      const ratings = ci.ratings || {};
-      const RATING_KEYS = [
-        'sleep_quality','mood','sensory_sensitivity','appetite',
-        'social_tolerance','meltdown_count','routine_adherence',
-        'communication_ease','physical_activity','caregiver_rating',
-      ];
-      RATING_KEYS.forEach(k => {
-        if (ratings[k] == null) return;
-        const el = document.getElementById('ci-' + k);
-        if (el) { el.value = ratings[k]; }
-        const val = document.getElementById('ci-' + k + '-val');
-        if (val) val.textContent = ratings[k];
-      });
-      if (ci.notes) document.getElementById('ci-notes').value = ci.notes;
-    }
-  } catch(e) { /* silent */ }
-}
-
-// ════════════════════════════════════════════════════════════════
-// TAB 2 — LOG TODAY
-// ════════════════════════════════════════════════════════════════
-// Voice state machine: IDLE | RECORDING | SENDING | MAPPED | ERROR
-let voiceState    = 'IDLE';
-let voiceLogId    = null;   // logs row id from transcribe-and-log response
-let voiceLoggedAt = null;   // logged_at timestamp echoed back; used in PUT body
-let voiceLogDate  = null;   // log_date (YYYY-MM-DD) for daily-checks POST
-
+// State
+let _logEditId      = null;   // UUID of log being edited (null = new entry)
+let _logPhotoFile   = null;   // File selected for meal photo
+let _logCaptureMode = null;   // 'voice' | 'photo' | null
 const selectedTriggers = new Set();
 const selectedTags     = new Set();
 
 const TRIGGER_OPTIONS = ['noise','transitions','sleep','food','social','screens','routine-change','other'];
 const TAG_OPTIONS     = ['public_place','sensory','home','school','evening','morning','after-therapy'];
+const RATING_KEYS     = ['sleep_quality','mood','sensory_sensitivity','appetite',
+                         'social_tolerance','meltdown_count','routine_adherence',
+                         'communication_ease','physical_activity','caregiver_rating'];
+const RATING_DEFAULTS = { meltdown_count: 0 }; // all others default to 3
 
+// ── initLogTab ────────────────────────────────────────────────────
+// Nginx /collect/ zone = 1 r/s, burst=3 nodelay.
+// Fire the two above-the-fold fetches first (interventions + today entries),
+// then delay Past Logs by 1.5 s so we never exceed the burst window.
+function initLogTab() {
+  const banner = document.getElementById('dl-date-banner');
+  if (banner) banner.textContent = new Date().toLocaleDateString(undefined,{
+    weekday:'long', year:'numeric', month:'long', day:'numeric'
+  });
+  resetLogForm();
+  loadInterventions();     // request 1
+  loadTodayEntries();      // requests 2 + 3 (logs + food-log in parallel)
+  setTimeout(loadLogsHistory, 1500); // request 4 — staggered to stay within burst=3
+}
+
+// ── buildTagPills ──────────────────────────────────────────────────
 function buildTagPills(containerId, options, selectedSet) {
-  const el=document.getElementById(containerId); if(!el) return;
-  el.innerHTML='';
-  options.forEach(v=>{
-    const btn=document.createElement('button');
-    btn.type='button'; btn.textContent=v; btn.dataset.value=v;
-    btn.className='tag-pill'+(selectedSet.has(v)?' active':'');
-    btn.onclick=()=>{
-      if(selectedSet.has(v)){ selectedSet.delete(v); btn.classList.remove('active'); }
+  const el = document.getElementById(containerId); if (!el) return;
+  el.innerHTML = '';
+  options.forEach(v => {
+    const btn = document.createElement('button');
+    btn.type = 'button'; btn.textContent = v; btn.dataset.value = v;
+    btn.className = 'tag-pill' + (selectedSet.has(v) ? ' active' : '');
+    btn.onclick = () => {
+      if (selectedSet.has(v)) { selectedSet.delete(v); btn.classList.remove('active'); }
       else { selectedSet.add(v); btn.classList.add('active'); }
     };
     el.appendChild(btn);
   });
 }
 
+// ── resetLogForm ──────────────────────────────────────────────────
+function resetLogForm() {
+  _logEditId      = null;
+  _logPhotoFile   = null;
+  _logCaptureMode = null;
+
+  document.getElementById('log-notes').value    = '';
+  document.getElementById('log-context').value  = '';
+  document.getElementById('log-response').value = '';
+  document.getElementById('log-outcome').value  = '';
+  document.getElementById('log-severity').value = '3';
+  document.getElementById('log-severity-val').textContent = '3';
+
+  selectedTriggers.clear(); selectedTags.clear();
+  buildTagPills('log-trigger-tags', TRIGGER_OPTIONS, selectedTriggers);
+  buildTagPills('log-tags', TAG_OPTIONS, selectedTags);
+
+  // Reset rating sliders to defaults (rows are always visible — no hiding)
+  RATING_KEYS.forEach(k => {
+    const def = RATING_DEFAULTS[k] !== undefined ? RATING_DEFAULTS[k] : 3;
+    const el = document.getElementById('ci-' + k);
+    if (el) el.value = def;
+    const v = document.getElementById('ci-' + k + '-val');
+    if (v) v.textContent = def;
+  });
+
+  // Hide all voice-filled badges (🎙) — fields themselves stay visible
+  document.querySelectorAll('[id^="vi-"]').forEach(el => el.classList.add('hidden'));
+
+  // Only hide transcription/photo output and food result — all entry fields stay visible
+  document.getElementById('log-food-result').classList.add('hidden');
+  document.getElementById('log-raw-display').classList.add('hidden');
+  document.getElementById('log-photo-preview-wrap').classList.add('hidden');
+  document.getElementById('log-meal-options').classList.add('hidden');
+
+  ['log-photo-input','log-photo-camera','log-photo-album'].forEach(id => {
+    const inp = document.getElementById(id);
+    if (inp) inp.value = '';
+  });
+  const pimg = document.getElementById('log-photo-preview-img');
+  if (pimg) pimg.src = '';
+
+  document.getElementById('log-submit-btn').textContent = 'Save Entry ✅';
+  document.getElementById('log-cancel-edit-btn').classList.add('hidden');
+  document.getElementById('log-submit-err').classList.add('hidden');
+  document.getElementById('log-submit-status').classList.add('hidden');
+  document.getElementById('dl-record-status').classList.add('hidden');
+}
+
+// ── loadInterventions ─────────────────────────────────────────────
 async function loadInterventions() {
-  const container=document.getElementById('intervention-list');
-  container.innerHTML='<p class="text-xs text-gray-400">Loading…</p>';
+  const container = document.getElementById('intervention-list');
+  container.innerHTML = '<p class="text-xs text-gray-400">Loading…</p>';
   try {
-    const resp=await fetch(COLLECT_API+'/interventions?status=open');
-    if(!resp.ok) throw new Error('HTTP '+resp.status);
-    const data=await resp.json();
-    const items=data.items||[];
-    if(items.length===0){
-      container.innerHTML='<p class="text-xs text-gray-500">No open interventions.</p>'; return;
+    const resp = await fetch(COLLECT_API + '/interventions?status=open');
+    if (!resp.ok) throw new Error('HTTP ' + resp.status);
+    const data = await resp.json();
+    const items = data.items || [];
+    if (items.length === 0) {
+      container.innerHTML = '<p class="text-xs text-gray-500">No open interventions.</p>'; return;
     }
-    container.innerHTML='';
-    items.forEach(item=>{
-      const div=document.createElement('div');
-      div.id='irow-'+item.id;
-      div.className='intervention-row mb-3';
-      div.innerHTML=`
+    container.innerHTML = '';
+    items.forEach(item => {
+      const div = document.createElement('div');
+      div.id = 'irow-' + item.id;
+      div.className = 'intervention-row mb-3';
+      div.innerHTML = `
         <div class="flex items-start justify-between gap-2">
           <div class="min-w-0">
             <p class="text-sm font-semibold text-gray-800">${escHtml(item.title||'')}</p>
-            ${item.description?`<p class="text-xs text-gray-500 mt-0.5">${escHtml(item.description)}</p>`:''}
+            ${item.description ? `<p class="text-xs text-gray-500 mt-0.5">${escHtml(item.description)}</p>` : ''}
             <p class="text-xs text-gray-400 mt-1">${fmtDate(item.created_at)||''} · ${escHtml(item.suggested_by||'')}</p>
           </div>
           <button onclick="toggleOutcomeForm('${item.id}')"
@@ -1722,7 +1729,7 @@ async function loadInterventions() {
           <div>
             <label class="text-xs font-semibold text-gray-600 block mb-1">Outcome <span class="text-red-500">*</span></label>
             <div class="flex gap-2">
-              ${['helped','no_change','worsened'].map(v=>`
+              ${['helped','no_change','worsened'].map(v => `
                 <label class="flex items-center gap-1.5 text-xs cursor-pointer">
                   <input type="radio" name="ostatus-${item.id}" value="${v}" class="accent-indigo-600" />
                   ${v.replace('_',' ')}
@@ -1743,568 +1750,521 @@ async function loadInterventions() {
                   class="dl-btn-secondary text-xs">Submit outcome</button>
         </div>`;
       container.appendChild(div);
-      // Set default resolved_at to now
-      const dti=document.getElementById('oresolved-'+item.id);
-      if(dti){ const n=new Date(); n.setMinutes(n.getMinutes()-n.getTimezoneOffset());
-               dti.value=n.toISOString().slice(0,16); }
+      const dti = document.getElementById('oresolved-' + item.id);
+      if (dti) { const n = new Date(); n.setMinutes(n.getMinutes() - n.getTimezoneOffset());
+                 dti.value = n.toISOString().slice(0, 16); }
     });
   } catch(err) {
-    container.innerHTML=`<p class="text-xs text-red-600">Could not load interventions: ${escHtml(err.message)}</p>`;
+    container.innerHTML = `<p class="text-xs text-red-600">Could not load interventions: ${escHtml(err.message)}</p>`;
   }
 }
 
 function toggleOutcomeForm(id) {
-  const f=document.getElementById('oform-'+id); if(f) f.classList.toggle('hidden');
+  const f = document.getElementById('oform-' + id); if (f) f.classList.toggle('hidden');
 }
 
 async function submitOutcomeForm(id) {
-  const statusEl=document.getElementById('ostatus-err-'+id);
-  const errEl=document.getElementById('oform-err-'+id);
+  const statusEl = document.getElementById('ostatus-err-' + id);
+  const errEl    = document.getElementById('oform-err-' + id);
   statusEl.classList.add('hidden'); errEl.classList.add('hidden');
-
-  const statusInput=document.querySelector(`input[name="ostatus-${id}"]:checked`);
-  if(!statusInput){ statusEl.textContent='Please select an outcome.'; statusEl.classList.remove('hidden'); return; }
-
-  const note=document.getElementById('onote-'+id).value||null;
-  const resolvedAt=document.getElementById('oresolved-'+id).value;
-  const body={ outcome_status:statusInput.value, outcome_note:note,
-               resolved_at:resolvedAt?new Date(resolvedAt).toISOString():new Date().toISOString() };
+  const statusInput = document.querySelector(`input[name="ostatus-${id}"]:checked`);
+  if (!statusInput) { statusEl.textContent = 'Please select an outcome.'; statusEl.classList.remove('hidden'); return; }
+  const note       = document.getElementById('onote-' + id).value || null;
+  const resolvedAt = document.getElementById('oresolved-' + id).value;
+  const body = { outcome_status: statusInput.value, outcome_note: note,
+                 resolved_at: resolvedAt ? new Date(resolvedAt).toISOString() : new Date().toISOString() };
   try {
-    const resp=await fetch(COLLECT_API+'/interventions/'+id+'/outcome',
-      {method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
-    if(!resp.ok){
-      let msg='HTTP '+resp.status;
-      try { const j=await resp.json(); msg=j.detail||msg; } catch {}
+    const resp = await fetch(COLLECT_API + '/interventions/' + id + '/outcome',
+      { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+    if (!resp.ok) {
+      let msg = 'HTTP ' + resp.status;
+      try { const j = await resp.json(); msg = j.detail || msg; } catch {}
       throw new Error(msg);
     }
-    const row=document.getElementById('irow-'+id); if(row) row.remove();
+    const row = document.getElementById('irow-' + id); if (row) row.remove();
     showToast('Outcome recorded ✓');
-    const list=document.getElementById('intervention-list');
-    if(list&&!list.querySelector('.intervention-row'))
-      list.innerHTML='<p class="text-xs text-gray-500">No open interventions.</p>';
+    const list = document.getElementById('intervention-list');
+    if (list && !list.querySelector('.intervention-row'))
+      list.innerHTML = '<p class="text-xs text-gray-500">No open interventions.</p>';
   } catch(err) {
-    errEl.textContent='Error: '+err.message; errEl.classList.remove('hidden');
+    errEl.textContent = 'Error: ' + err.message; errEl.classList.remove('hidden');
   }
 }
 
-// ── Rating keys (Daily Ratings card) ─────────────────────────────
-const RATING_KEYS = ['sleep_quality','mood','sensory_sensitivity','appetite',
-                     'social_tolerance','meltdown_count','routine_adherence',
-                     'communication_ease','physical_activity','caregiver_rating'];
+// ── dlVoiceCapture ────────────────────────────────────────────────
+let _logMediaRecorder = null, _logAudioChunks = [];
 
-// Collect rating values from #ci-* inputs.
-// Returns { ratings: {key: int, …}, hasRatings: bool }
-function collectRatings() {
-  const defaults = { meltdown_count: 0 }; // number input default
-  const ratings = {};
-  let touched = false;
-  RATING_KEYS.forEach(k => {
-    const el = document.getElementById('ci-' + k);
-    if (!el) return;
-    const v = Number(el.value);
-    const def = defaults[k] !== undefined ? defaults[k] : 3;
-    if (!isNaN(v)) {
-      ratings[k] = v;
-      if (v !== def) touched = true;
-    }
-  });
-  const notes = (document.getElementById('ci-notes').value || '').trim();
-  return { ratings, hasRatings: touched, notes: notes || null };
-}
-
-// Reset all rating sliders to default
-function resetRatings() {
-  RATING_KEYS.forEach(k => {
-    const el = document.getElementById('ci-' + k);
-    if (!el) return;
-    const def = k === 'meltdown_count' ? 0 : 3;
-    el.value = def;
-    const val = document.getElementById('ci-' + k + '-val');
-    if (val) val.textContent = def;
-  });
-  document.getElementById('ci-notes').value = '';
-  document.getElementById('ci-notes-count').textContent = '0';
-}
-
-// Reset voice indicator badges on all voice-filled fields
-function clearVoiceIndicators() {
-  document.querySelectorAll('[id^="vi-"]').forEach(el => el.classList.add('hidden'));
-}
-
-// Reset entire Log Today form to IDLE state
-function resetLogForm() {
-  document.getElementById('log-event').value = '';
-  document.getElementById('log-context').value = '';
-  document.getElementById('log-response').value = '';
-  document.getElementById('log-outcome').value = '';
-  document.getElementById('log-notes').value = '';
-  document.getElementById('log-severity').value = '3';
-  document.getElementById('log-severity-val').textContent = '3';
-  selectedTriggers.clear(); selectedTags.clear();
-  buildTagPills('log-trigger-tags', TRIGGER_OPTIONS, selectedTriggers);
-  buildTagPills('log-tags', TAG_OPTIONS, selectedTags);
-  resetRatings();
-  clearVoiceIndicators();
-  // Clear voice state
-  voiceState = 'IDLE';
-  voiceLogId = null; voiceLoggedAt = null; voiceLogDate = null;
-  // Hide voice banner
-  document.getElementById('voice-banner').classList.add('hidden');
-  // Reset submit button label
-  const btn = document.getElementById('log-submit-btn');
-  if (btn) btn.innerHTML = 'Submit Log ✅';
-}
-
-// ── Combined submit (manual POST or voice PUT) ─────────────────────
-async function submitCombined() {
-  const btn = document.getElementById('log-submit-btn');
-  const statusEl = document.getElementById('log-submit-status');
-
-  // Client-side validation: event + severity required in manual path;
-  // in MAPPED path they may already be null if only ratings were captured.
-  const isVoiceMapped = voiceState === 'MAPPED';
-  let valid = true;
-  const eventVal = document.getElementById('log-event').value.trim();
-  const eventErr = document.getElementById('log-event-err');
-  if (!isVoiceMapped && !eventVal) {
-    eventErr.textContent = 'Event description is required.';
-    eventErr.classList.remove('hidden'); valid = false;
-  } else eventErr.classList.add('hidden');
-
-  const severityVal = parseInt(document.getElementById('log-severity').value);
-  const sevErr = document.getElementById('log-severity-err');
-  if (!isVoiceMapped && (isNaN(severityVal) || severityVal < 1 || severityVal > 5)) {
-    sevErr.textContent = 'Severity must be between 1 and 5.';
-    sevErr.classList.remove('hidden'); valid = false;
-  } else sevErr.classList.add('hidden');
-
-  const ciNotes = document.getElementById('ci-notes').value;
-  if (ciNotes.length > 5000) {
-    showToast('Ratings notes must be 5000 chars or fewer.'); return;
-  }
-  if (!valid) return;
-
-  btn.disabled = true;
-  statusEl.textContent = 'Saving…';
-  statusEl.className = 'text-gray-500 text-sm text-center mt-1';
-  statusEl.classList.remove('hidden');
-
-  const { ratings, hasRatings, notes: ciNotesVal } = collectRatings();
-  const logDate = voiceLogDate || localDateStr();
-
-  try {
-    // ── Event log request ─────────────────────────────────────────
-    if (isVoiceMapped && voiceLogId) {
-      // PUT to update the auto-saved voice entry
-      const body = {
-        child_id:  CHILD_ID,
-        logged_at: voiceLoggedAt || new Date().toISOString(),
-        event:     eventVal || null,
-        triggers:  [...selectedTriggers],
-        context:   document.getElementById('log-context').value || null,
-        response:  document.getElementById('log-response').value || null,
-        outcome:   document.getElementById('log-outcome').value || null,
-        severity:  isNaN(severityVal) ? null : severityVal,
-        tags:      [...selectedTags],
-        notes:     document.getElementById('log-notes').value || null,
-      };
-      const resp = await fetch(COLLECT_API + '/logs/' + voiceLogId,
-        { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
-      if (!resp.ok) {
-        const j = await resp.json().catch(() => ({}));
-        throw new Error(j.detail || 'HTTP ' + resp.status);
-      }
-    } else if (eventVal) {
-      // POST new event log entry (manual path)
-      const body = {
-        child_id:  CHILD_ID,
-        logged_at: new Date().toISOString(),
-        event:     eventVal,
-        triggers:  [...selectedTriggers],
-        context:   document.getElementById('log-context').value || null,
-        response:  document.getElementById('log-response').value || null,
-        outcome:   document.getElementById('log-outcome').value || null,
-        severity:  severityVal,
-        tags:      [...selectedTags],
-        notes:     document.getElementById('log-notes').value || null,
-      };
-      const resp = await fetch(COLLECT_API + '/logs',
-        { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
-      if (resp.status === 422) {
-        const j = await resp.json();
-        const detail = Array.isArray(j.detail) ? j.detail.map(e => e.msg).join(', ') : j.detail || 'Validation error';
-        statusEl.textContent = '⚠ ' + detail;
-        statusEl.className = 'text-red-600 text-sm text-center mt-1';
-        btn.disabled = false; return;
-      }
-      if (!resp.ok) throw new Error('HTTP ' + resp.status);
-    }
-
-    // ── Daily check-in request (separate, optional) ────────────────
-    if (hasRatings || ciNotesVal) {
-      const ciBody = {
-        check_date: logDate,
-        ratings:    hasRatings ? ratings : {},
-        notes:      ciNotesVal,
-      };
-      const ciResp = await fetch(COLLECT_API + '/daily-checks',
-        { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(ciBody) });
-      if (ciResp.status === 422) {
-        const j = await ciResp.json();
-        const detail = Array.isArray(j.detail) ? j.detail.map(e => e.msg).join(', ') : j.detail || 'Validation error';
-        statusEl.textContent = '⚠ Ratings: ' + detail;
-        statusEl.className = 'text-red-600 text-sm text-center mt-1';
-        btn.disabled = false; return;
-      }
-      if (!ciResp.ok) throw new Error('Daily check-in HTTP ' + ciResp.status);
-    }
-
-    // ── Success ────────────────────────────────────────────────────
-    _insightsCacheValid = false;   // invalidate so Insights re-fetches with new data
-    resetLogForm();
-    showToast('Saved ✓');
-    statusEl.classList.add('hidden');
-  } catch (err) {
-    statusEl.textContent = '❌ ' + err.message;
-    statusEl.className = 'text-red-600 text-sm text-center mt-1';
-  } finally { btn.disabled = false; }
-}
-
-// ── Voice fill (whole-form) state machine ──────────────────────────
-let mediaRecorder = null, audioChunks = [];
-
-async function dlVoiceFill() {
+async function dlVoiceCapture() {
   const btn    = document.getElementById('dl-record-btn');
   const status = document.getElementById('dl-record-status');
 
-  // RECORDING → stop and send
-  if (mediaRecorder && mediaRecorder.state === 'recording') {
-    mediaRecorder.stop(); return;
+  if (_logMediaRecorder && _logMediaRecorder.state === 'recording') {
+    _logMediaRecorder.stop(); return;
   }
 
-  // IDLE or ERROR → start recording
   let stream;
   try { stream = await navigator.mediaDevices.getUserMedia({ audio: true }); }
   catch (err) {
     status.textContent = '⚠️ Mic access denied: ' + err.message;
-    voiceState = 'ERROR'; return;
+    status.classList.remove('hidden'); return;
   }
 
-  voiceState = 'RECORDING';
-  audioChunks = [];
-  mediaRecorder = new MediaRecorder(stream);
-  mediaRecorder.ondataavailable = e => { if (e.data.size > 0) audioChunks.push(e.data); };
+  _logAudioChunks = [];
+  _logMediaRecorder = new MediaRecorder(stream);
+  _logMediaRecorder.ondataavailable = e => { if (e.data.size > 0) _logAudioChunks.push(e.data); };
 
-  mediaRecorder.onstop = async () => {
+  _logMediaRecorder.onstop = async () => {
     stream.getTracks().forEach(t => t.stop());
-    voiceState = 'SENDING';
-    btn.textContent = '🎙️ Record & Transcribe (fill whole form)';
+    btn.textContent = '🎙️ Record Voice';
     btn.classList.remove('recording');
     btn.disabled = true;
-    status.textContent = '⏳ Sending to collect service…';
+    status.textContent = '⏳ Transcribing…';
+    status.classList.remove('hidden');
 
-    const blob = new Blob(audioChunks, { type: 'audio/webm' });
-    const fd = new FormData();
+    const blob = new Blob(_logAudioChunks, { type: 'audio/webm' });
+    const fd   = new FormData();
     fd.append('audio', blob, 'recording.webm');
     fd.append('child_id', CHILD_ID);
+    fd.append('mode', 'structured');
+    fd.append('client_local_hour', new Date().getHours());
 
     try {
-      const res = await fetch(COLLECT_API + '/transcribe-and-log', { method: 'POST', body: fd });
+      const res = await fetch(COLLECT_API + '/transcribe-and-log', {
+        method: 'POST', body: fd, signal: createTimeoutSignal(60000)
+      });
       if (!res.ok) {
         const e = await res.json().catch(() => ({}));
         throw new Error(e.detail || 'HTTP ' + res.status);
       }
       const data = await res.json();
-
-      // Backend is extract-only — no DB write, no log_id returned.
-      // voiceLogId stays null so submitCombined falls to the POST (new log) path.
-      voiceState    = 'MAPPED';
-      voiceLogId    = null;
-      voiceLoggedAt = null;
-      voiceLogDate  = null;
-
-      // Adapt ExtractedFields → applyVoiceMapped-compatible object.
-      // Use raw_text as the event description so #log-event is never blank —
-      // a blank event with voiceState=MAPPED would silently skip the POST.
-      const ext = data.extracted || {};
-      applyVoiceMapped({
-        event:    data.raw_text    || null,
-        triggers: ext.trigger_type ? [ext.trigger_type] : [],
-        context:  ext.context      || null,
-        outcome:  ext.outcome_hint || null,
-        severity: ext.severity     || null,
-        tags:     ext.tags         || [],
-      });
-
-      // Show voice banner (nothing was auto-saved; user must submit)
-      const banner = document.getElementById('voice-banner');
-      document.getElementById('voice-banner-text').textContent =
-        'Transcription complete — review fields below, then submit.';
-      document.getElementById('voice-transcript').textContent =
-        'Heard: ' + (data.raw_text || '(nothing detected)');
-      banner.classList.remove('hidden');
-
-      // Keep submit label as "Submit Log" — voiceLogId is null so it's a new POST
-      const submitBtn = document.getElementById('log-submit-btn');
-      if (submitBtn) submitBtn.innerHTML = 'Submit Log ✅';
-
-      const confPct = data.confidence ? Math.round(data.confidence.overall * 100) : null;
-      status.textContent = '✅ Transcription done' + (confPct !== null ? ' (confidence: ' + confPct + '%)' : '');
+      status.textContent = '✅ Transcription done';
+      _logCaptureMode = 'voice';
+      applyVoiceMapped(data.mapped || {}, data.raw_text || '');
     } catch (err) {
-      voiceState = 'ERROR';
-      status.textContent = '❌ Failed: ' + err.message;
-      showToast('Voice fill failed — type instead.');
+      status.textContent = '❌ ' + err.message;
+      showToast('Voice capture failed — type instead.');
     } finally {
       btn.disabled = false;
     }
   };
 
-  mediaRecorder.start();
+  _logMediaRecorder.start();
   btn.textContent = '⏹ Stop & Send';
   btn.classList.add('recording');
-  status.textContent = '🔴 Recording… tap again to stop and send';
+  status.textContent = '🔴 Recording… tap again to stop';
+  status.classList.remove('hidden');
 }
 
-// Apply voice-mapped fields to form elements
-function applyVoiceMapped(m) {
-  function setVi(key) {
-    const badge = document.getElementById('vi-' + key);
-    if (badge) badge.classList.remove('hidden');
+// ── applyVoiceMapped ──────────────────────────────────────────────
+function applyVoiceMapped(m, rawText) {
+  // Show transcription text if present
+  if (rawText) {
+    document.getElementById('log-raw-text').textContent = rawText;
+    document.getElementById('log-raw-display').classList.remove('hidden');
   }
 
-  // Event log fields
-  if (m.event != null) {
-    document.getElementById('log-event').value = m.event; setVi('event');
+  // Fill voice-extracted values — all fields are always visible, just set values + show 🎙 badge
+  const notes = m.event || m.checkin_notes || m.notes || '';
+  if (notes) {
+    document.getElementById('log-notes').value = notes;
+    document.getElementById('vi-notes').classList.remove('hidden');
   }
   if (m.triggers && m.triggers.length > 0) {
     m.triggers.forEach(v => { if (TRIGGER_OPTIONS.includes(v)) selectedTriggers.add(v); });
-    buildTagPills('log-trigger-tags', TRIGGER_OPTIONS, selectedTriggers); setVi('triggers');
+    buildTagPills('log-trigger-tags', TRIGGER_OPTIONS, selectedTriggers);
+    document.getElementById('vi-triggers').classList.remove('hidden');
   }
-  if (m.context != null) { document.getElementById('log-context').value = m.context; setVi('context'); }
-  if (m.response != null) { document.getElementById('log-response').value = m.response; setVi('response'); }
-  if (m.outcome != null) { document.getElementById('log-outcome').value = m.outcome; setVi('outcome'); }
+  if (m.context) {
+    document.getElementById('log-context').value = m.context;
+    document.getElementById('vi-context').classList.remove('hidden');
+  }
+  if (m.response) {
+    document.getElementById('log-response').value = m.response;
+    document.getElementById('vi-response').classList.remove('hidden');
+  }
+  if (m.outcome) {
+    document.getElementById('log-outcome').value = m.outcome;
+    document.getElementById('vi-outcome').classList.remove('hidden');
+  }
   if (m.severity != null) {
     document.getElementById('log-severity').value = m.severity;
-    document.getElementById('log-severity-val').textContent = m.severity; setVi('severity');
+    document.getElementById('log-severity-val').textContent = m.severity;
+    document.getElementById('vi-severity').classList.remove('hidden');
   }
   if (m.tags && m.tags.length > 0) {
     m.tags.forEach(v => { if (TAG_OPTIONS.includes(v)) selectedTags.add(v); });
-    buildTagPills('log-tags', TAG_OPTIONS, selectedTags); setVi('tags');
+    buildTagPills('log-tags', TAG_OPTIONS, selectedTags);
+    document.getElementById('vi-tags').classList.remove('hidden');
   }
-  if (m.notes != null) { document.getElementById('log-notes').value = m.notes; setVi('notes'); }
 
-  // Daily rating fields
-  const ratingMap = {
-    sleep_quality: 'sleep_quality', mood: 'mood',
-    sensory_sensitivity: 'sensory_sensitivity', appetite: 'appetite',
-    social_tolerance: 'social_tolerance', meltdown_count: 'meltdown_count',
-    routine_adherence: 'routine_adherence', communication_ease: 'communication_ease',
-    physical_activity: 'physical_activity', caregiver_rating: 'caregiver_rating',
-  };
-  Object.entries(ratingMap).forEach(([mKey, ciKey]) => {
-    if (m[mKey] != null) {
-      const el = document.getElementById('ci-' + ciKey);
-      if (el) {
-        el.value = m[mKey];
-        const valEl = document.getElementById('ci-' + ciKey + '-val');
-        if (valEl) valEl.textContent = m[mKey];
-        setVi(ciKey);
-      }
-    }
+  // Apply voice-mapped ratings — rows are always visible, just set values + show badge
+  RATING_KEYS.forEach(k => {
+    if (m[k] == null) return;
+    const el = document.getElementById('ci-' + k);
+    if (el) el.value = m[k];
+    const val = document.getElementById('ci-' + k + '-val');
+    if (val) val.textContent = m[k];
+    const badge = document.getElementById('vi-' + k);
+    if (badge) badge.classList.remove('hidden');
   });
-  if (m.checkin_notes != null) {
-    document.getElementById('ci-notes').value = m.checkin_notes;
-    document.getElementById('ci-notes-count').textContent = m.checkin_notes.length;
-    setVi('checkin_notes');
+}
+
+// ── toggleAllRatings — no-op (ratings always visible) ────────────
+function toggleAllRatings(btn) { /* ratings are always visible; kept for safety */ }
+
+// ── toggleMealOptions ─────────────────────────────────────────────
+function toggleMealOptions() {
+  const opts = document.getElementById('log-meal-options');
+  opts.classList.toggle('hidden');
+}
+
+// ── handleLogPhotoSelect ──────────────────────────────────────────
+async function handleLogPhotoSelect(evt) {
+  const file = evt.target.files && evt.target.files[0];
+  if (!file) return;
+  _logPhotoFile   = file;
+  _logCaptureMode = 'photo';
+
+  // Collapse the camera/album picker
+  document.getElementById('log-meal-options').classList.add('hidden');
+
+  // Show preview immediately
+  const img = document.getElementById('log-photo-preview-img');
+  const reader = new FileReader();
+  reader.onload = e => { img.src = e.target.result; };
+  reader.readAsDataURL(file);
+  document.getElementById('log-photo-preview-wrap').classList.remove('hidden');
+  document.getElementById('log-food-result').classList.add('hidden');
+
+  // Auto-submit to backend as soon as photo is selected
+  const statusEl = document.getElementById('log-submit-status');
+  const errEl    = document.getElementById('log-submit-err');
+  const btn      = document.getElementById('log-submit-btn');
+  btn.disabled = true;
+  statusEl.textContent = 'Analysing meal…';
+  statusEl.classList.remove('hidden');
+  errEl.classList.add('hidden');
+  try {
+    const foodData = await _submitFoodPhotoEntry();
+    _insightsCacheValid = false;
+    statusEl.classList.add('hidden');
+    showToast('Meal logged ✓');
+    _renderFoodResult(foodData);
+    loadTodayEntries();
+    setTimeout(loadLogsHistory, 1500);
+    // Reset photo state so Save Entry doesn't double-submit the photo
+    _logPhotoFile   = null;
+    _logCaptureMode = null;
+  } catch (err) {
+    errEl.textContent = '❌ ' + err.message;
+    errEl.classList.remove('hidden');
+    statusEl.classList.add('hidden');
+  } finally {
+    btn.disabled = false;
   }
 }
 
-// ── Audio Quick Log — confirmation flow (P-UI-3) ──────────────────
-let _audioMediaRecorder = null, _audioChunks = [];
-let _audioAllowedTriggers = [];
+// ── submitLogEntry ────────────────────────────────────────────────
+async function submitLogEntry() {
+  const btn      = document.getElementById('log-submit-btn');
+  const statusEl = document.getElementById('log-submit-status');
+  const errEl    = document.getElementById('log-submit-err');
 
-async function startAudioLog() {
-  const btn    = document.getElementById('audio-log-btn');
-  const status = document.getElementById('audio-log-status');
-  const errEl  = document.getElementById('transcribe-error');
+  btn.disabled = true;
+  statusEl.textContent = 'Saving…';
+  statusEl.classList.remove('hidden');
   errEl.classList.add('hidden');
 
-  // If already recording — stop
-  if (_audioMediaRecorder && _audioMediaRecorder.state === 'recording') {
-    _audioMediaRecorder.stop(); return;
+  try {
+    let foodData = null;
+    if (_logCaptureMode === 'photo') {
+      foodData = await _submitFoodPhotoEntry();
+    } else if (_logEditId) {
+      await _submitEditLogEntry();
+    } else {
+      await _submitNewLogEntry();
+    }
+    _insightsCacheValid = false;
+    statusEl.classList.add('hidden');
+    showToast('Saved ✓');
+    resetLogForm();
+    if (foodData) _renderFoodResult(foodData);
+    loadTodayEntries();
+    setTimeout(loadLogsHistory, 1500); // stagger to avoid nginx burst=3 on /collect/
+  } catch (err) {
+    errEl.textContent = '❌ ' + err.message;
+    errEl.classList.remove('hidden');
+    statusEl.classList.add('hidden');
+  } finally {
+    btn.disabled = false;
   }
-
-  let stream;
-  try { stream = await navigator.mediaDevices.getUserMedia({ audio: true }); }
-  catch (err) {
-    errEl.textContent = 'Microphone access denied: ' + err.message;
-    errEl.classList.remove('hidden'); return;
-  }
-
-  _audioChunks = [];
-  _audioMediaRecorder = new MediaRecorder(stream);
-  _audioMediaRecorder.ondataavailable = e => { if (e.data.size > 0) _audioChunks.push(e.data); };
-
-  _audioMediaRecorder.onstop = async () => {
-    stream.getTracks().forEach(t => t.stop());
-    btn.textContent = '🎙 Start recording';
-    btn.disabled = true;
-    status.textContent = '⏳ Transcribing…';
-
-    const blob = new Blob(_audioChunks, { type: 'audio/webm' });
-    const fd = new FormData();
-    fd.append('audio', blob, 'recording.webm');
-    fd.append('child_id', CHILD_ID);
-
-    try {
-      const resp = await fetch(COLLECT_API + '/transcribe-and-log', {
-        method: 'POST', body: fd, signal: createTimeoutSignal(60000)
-      });
-      if (!resp.ok) {
-        const e = await resp.json().catch(() => ({}));
-        throw new Error(e.detail || 'HTTP ' + resp.status);
-      }
-      const data = await resp.json();
-      status.textContent = '✅ Transcription complete — review below';
-      showAudioConfirm(data);
-    } catch (err) {
-      const msg = classifyFetchError(err, 0);
-      status.textContent = '';
-      errEl.textContent = msg;
-      errEl.classList.remove('hidden');
-    } finally { btn.disabled = false; }
-  };
-
-  _audioMediaRecorder.start();
-  btn.textContent = '⏹ Stop recording';
-  status.textContent = '🔴 Recording… tap again to stop';
 }
 
-function showAudioConfirm(data) {
-  // raw_text (read-only)
-  const rawTextEl = document.getElementById('audio-raw-text');
-  if (rawTextEl) rawTextEl.textContent = data.raw_text || '(nothing detected)';
-
-  // warnings
-  const warnEl = document.getElementById('audio-warnings');
-  if (warnEl) {
-    if (data.warnings && data.warnings.length > 0) {
-      warnEl.innerHTML = data.warnings.map(w => `<p>⚠ ${escHtml(w)}</p>`).join('');
-      warnEl.classList.remove('hidden');
-    } else { warnEl.classList.add('hidden'); }
+async function _submitFoodPhotoEntry() {
+  if (!_logPhotoFile) throw new Error('No photo selected');
+  const fd = new FormData();
+  fd.append('photo', _logPhotoFile, _logPhotoFile.name || 'meal.jpg');
+  fd.append('child_id', CHILD_ID);
+  fd.append('client_local_hour', new Date().getHours());
+  const notes = document.getElementById('log-notes').value.trim();
+  if (notes) fd.append('notes', notes);
+  const res = await fetch(COLLECT_API + '/food-log', { method: 'POST', body: fd });
+  if (!res.ok) {
+    const e = await res.json().catch(() => ({}));
+    throw new Error(e.detail || 'HTTP ' + res.status);
   }
+  return await res.json();
+}
 
-  // trigger type dropdown driven by allowed_trigger_values
-  _audioAllowedTriggers = data.allowed_trigger_values || [];
-  const trigSelect = document.getElementById('audio-trigger-type');
-  if (trigSelect) {
-    trigSelect.innerHTML = _audioAllowedTriggers.map(t =>
-      `<option value="${escHtml(t)}">${escHtml(t.replace(/_/g,' '))}</option>`
-    ).join('');
-    const extracted = data.extracted || {};
-    if (extracted.trigger_type && _audioAllowedTriggers.includes(extracted.trigger_type)) {
-      trigSelect.value = extracted.trigger_type;
+async function _submitNewLogEntry() {
+  const notes    = document.getElementById('log-notes').value.trim();
+  const context  = document.getElementById('log-context').value.trim();
+  const severity = parseInt(document.getElementById('log-severity').value);
+  const logDate  = localDateStr();
+
+  const hasEvent = notes || context || selectedTriggers.size > 0;
+  if (hasEvent) {
+    const body = {
+      child_id:  CHILD_ID,
+      logged_at: new Date().toISOString(),
+      event:     notes || null,
+      triggers:  [...selectedTriggers],
+      context:   context || null,
+      response:  document.getElementById('log-response').value.trim() || null,
+      outcome:   document.getElementById('log-outcome').value.trim() || null,
+      severity:  (severity !== null && !isNaN(severity)) ? severity : null,
+      tags:      [...selectedTags],
+      notes:     null,
+    };
+    const res = await fetch(COLLECT_API + '/logs',
+      { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+    if (!res.ok) {
+      const j = await res.json().catch(() => ({}));
+      throw new Error(j.detail || 'HTTP ' + res.status);
     }
   }
 
-  // severity
-  const sev = (data.extracted || {}).severity || 3;
-  const sevEl = document.getElementById('audio-severity');
-  const sevVal = document.getElementById('audio-severity-val');
-  if (sevEl) sevEl.value = sev;
-  if (sevVal) sevVal.textContent = sev;
-
-  // context
-  const ctxEl = document.getElementById('audio-context');
-  if (ctxEl) ctxEl.value = (data.extracted || {}).context || '';
-
-  // outcome_hint
-  const oEl = document.getElementById('audio-outcome-hint');
-  if (oEl) oEl.value = (data.extracted || {}).outcome_hint || '';
-
-  // confidence display
-  const confEl = document.getElementById('audio-confidence');
-  if (confEl && data.confidence) {
-    const c = data.confidence;
-    confEl.innerHTML = [
-      c.trigger  != null ? `<span class="bg-indigo-50 text-indigo-700 px-2 py-0.5 rounded-full">Trigger: ${Math.round(c.trigger*100)}%</span>` : '',
-      c.severity != null ? `<span class="bg-indigo-50 text-indigo-700 px-2 py-0.5 rounded-full">Severity: ${Math.round(c.severity*100)}%</span>` : '',
-      c.overall  != null ? `<span class="bg-indigo-50 text-indigo-700 px-2 py-0.5 rounded-full">Overall: ${Math.round(c.overall*100)}%</span>` : '',
-    ].join('');
+  const { ratings, hasRatings } = _collectRatings();
+  if (hasRatings) {
+    const ciBody = { check_date: logDate, ratings, notes: null };
+    const ciRes = await fetch(COLLECT_API + '/daily-checks',
+      { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(ciBody) });
+    if (!ciRes.ok) {
+      const j = await ciRes.json().catch(() => ({}));
+      throw new Error(j.detail || 'HTTP ' + ciRes.status);
+    }
   }
 
-  const confirmErr = document.getElementById('audio-confirm-error');
-  if (confirmErr) confirmErr.classList.add('hidden');
-
-  document.getElementById('audio-confirm-section').classList.remove('hidden');
-  document.getElementById('audio-confirm-section').scrollIntoView({ behavior: 'smooth', block: 'start' });
+  if (!hasEvent && !hasRatings) throw new Error('Nothing to save — record voice or take a photo first.');
 }
 
-async function confirmAudioLog() {
-  const btn = document.getElementById('audio-confirm-btn');
-  const errEl = document.getElementById('audio-confirm-error');
-  if (errEl) errEl.classList.add('hidden');
-
-  const triggerType = document.getElementById('audio-trigger-type').value;
-  const severity    = parseInt(document.getElementById('audio-severity').value);
-  const context     = document.getElementById('audio-context').value || null;
-  const outcomeHint = document.getElementById('audio-outcome-hint').value || null;
-
-  if (!triggerType) {
-    if (errEl) { errEl.textContent = 'Please select a trigger type.'; errEl.classList.remove('hidden'); }
-    return;
-  }
-
-  if (btn) { btn.disabled = true; btn.textContent = 'Saving…'; }
-  const rawText = document.getElementById('audio-raw-text').textContent;
-
+async function _submitEditLogEntry() {
+  const notes    = document.getElementById('log-notes').value.trim();
+  const severity = parseInt(document.getElementById('log-severity').value);
   const body = {
     child_id:  CHILD_ID,
-    logged_at: new Date().toISOString(),
-    event:     rawText && rawText !== '(nothing detected)' ? rawText : triggerType.replace(/_/g,' '),
-    triggers:  [triggerType],
-    context:   context,
-    outcome:   outcomeHint,
-    severity:  severity,
-    tags:      [],
+    event:     notes || null,
+    triggers:  [...selectedTriggers],
+    context:   document.getElementById('log-context').value.trim() || null,
+    response:  document.getElementById('log-response').value.trim() || null,
+    outcome:   document.getElementById('log-outcome').value.trim() || null,
+    severity:  (severity !== null && !isNaN(severity)) ? severity : null,
+    tags:      [...selectedTags],
     notes:     null,
   };
-
-  try {
-    const resp = await fetch(COLLECT_API + '/logs', {
-      method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(body), signal: createTimeoutSignal(30000)
-    });
-    if (!resp.ok) {
-      const j = await resp.json().catch(() => ({}));
-      throw new Error(j.detail || 'HTTP ' + resp.status);
-    }
-    cancelAudioLog();
-    showToast('Audio log saved ✓');
-    document.getElementById('audio-log-status').textContent = '';
-  } catch (err) {
-    const msg = classifyFetchError(err, 0);
-    if (errEl) { errEl.textContent = msg; errEl.classList.remove('hidden'); }
-    if (btn) { btn.disabled = false; btn.textContent = '✅ Confirm & Save'; }
+  const res = await fetch(COLLECT_API + '/logs/' + _logEditId,
+    { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+  if (!res.ok) {
+    const j = await res.json().catch(() => ({}));
+    throw new Error(j.detail || 'HTTP ' + res.status);
   }
 }
 
-function cancelAudioLog() {
-  document.getElementById('audio-confirm-section').classList.add('hidden');
-  const btn = document.getElementById('audio-confirm-btn');
-  if (btn) { btn.disabled = false; btn.innerHTML = '✅ Confirm &amp; Save'; }
+function _collectRatings() {
+  const ratings = {};
+  let hasRatings = false;
+  // Ratings are always visible — read all sliders unconditionally
+  RATING_KEYS.forEach(k => {
+    const el = document.getElementById('ci-' + k);
+    if (!el) return;
+    const v = Number(el.value);
+    const def = RATING_DEFAULTS[k] !== undefined ? RATING_DEFAULTS[k] : 3;
+    if (!isNaN(v)) { ratings[k] = v; if (v !== def) hasRatings = true; }
+  });
+  return { ratings, hasRatings };
 }
 
-// ── Past Logs history (P-UI-7) ────────────────────────────────────
+// ── _renderFoodResult ─────────────────────────────────────────────
+function _renderFoodResult(data) {
+  const body  = document.getElementById('log-food-result-body');
+  const wrap  = document.getElementById('log-food-result');
+  const foods = (data.foods_identified || []).join(', ') || '—';
+  const cal   = data.estimated_calories != null ? data.estimated_calories + ' kcal' : 'unknown';
+  const meal  = data.meal_type || 'unclassified';
+  const macros = data.macros || {};
+  const macroLine = [
+    macros.protein_g != null ? 'protein ' + macros.protein_g + 'g' : null,
+    macros.carbs_g   != null ? 'carbs '   + macros.carbs_g   + 'g' : null,
+    macros.fat_g     != null ? 'fat '     + macros.fat_g     + 'g' : null,
+    macros.fiber_g   != null ? 'fibre '   + macros.fiber_g   + 'g' : null,
+  ].filter(Boolean).join(' · ') || '—';
+  let html = `
+    <div class="flex flex-wrap gap-2 text-xs mb-1">
+      <span class="tag-pill active">${escHtml(meal)}</span>
+      <span class="tag-pill">${escHtml(data.confidence||'—')} confidence</span>
+    </div>
+    <p><span class="font-semibold">Foods:</span> ${escHtml(foods)}</p>
+    <p><span class="font-semibold">Calories:</span> ${escHtml(cal)}</p>
+    <p><span class="font-semibold">Macros:</span> ${escHtml(macroLine)}</p>`;
+  if (data.sensory_notes) html += `<p class="text-gray-500 text-xs">Sensory: ${escHtml(data.sensory_notes)}</p>`;
+  if (data.concerns)      html += `<p class="text-amber-600 text-xs">⚠️ ${escHtml(data.concerns)}</p>`;
+  body.innerHTML = html;
+  wrap.classList.remove('hidden');
+  wrap.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+}
+
+// ── loadTodayEntries ──────────────────────────────────────────────
+async function loadTodayEntries() {
+  const container = document.getElementById('today-entries-list');
+  container.innerHTML = '<p class="text-xs text-gray-400">Loading…</p>';
+  const today = localDateStr();
+  try {
+    const [logsRes, foodRes] = await Promise.all([
+      fetch(COLLECT_API + '/logs?days=2&limit=200'),
+      fetch(COLLECT_API + '/food-log?days=2&limit=100&child_id=' + encodeURIComponent(CHILD_ID)),
+    ]);
+    const logsData = logsRes.ok ? await logsRes.json() : { logs: [] };
+    const foodData = foodRes.ok ? await foodRes.json() : { logs: [] };
+
+    // Filter client-side using local date — avoids UTC/local mismatch from server-side date cast
+    const todayLogs = (logsData.logs || []).filter(l =>
+      l.logged_at && localDateStr(l.logged_at) === today && l.child_id === CHILD_ID
+    );
+    const todayFood = (foodData.logs || []).filter(l =>
+      l.logged_at && localDateStr(l.logged_at) === today
+    );
+
+    const entries = [
+      ...todayLogs.map(l => ({ type: 'event', data: l, ts: l.logged_at })),
+      ...todayFood.map(l => ({ type: 'food',  data: l, ts: l.logged_at })),
+    ].sort((a, b) => new Date(b.ts) - new Date(a.ts));
+
+    if (entries.length === 0) {
+      container.innerHTML = '<p class="text-xs text-gray-500">No entries yet today.</p>'; return;
+    }
+    container.innerHTML = '';
+    entries.forEach(e => container.appendChild(buildTodayEntryCard(e)));
+  } catch (err) {
+    container.innerHTML = `<p class="text-xs text-red-500">Failed to load: ${escHtml(err.message)}</p>`;
+  }
+}
+
+function buildTodayEntryCard(entry) {
+  const div  = document.createElement('div');
+  const time = entry.ts
+    ? new Date(entry.ts).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+    : '';
+  if (entry.type === 'event') {
+    const l = entry.data;
+    const sev = l.severity || 0;
+    const sevColor = sev >= 4 ? 'bg-red-100 text-red-800'
+                   : sev >= 3 ? 'bg-yellow-100 text-yellow-800'
+                   : 'bg-green-100 text-green-800';
+    const triggers = (l.triggers || []).map(t =>
+      `<span class="inline-block px-1.5 py-0.5 bg-indigo-50 text-indigo-700 text-xs rounded-full border border-indigo-200">${escHtml(t)}</span>`
+    ).join(' ');
+    div.className = 'border border-gray-200 rounded-xl p-3 bg-white space-y-1.5 cursor-pointer hover:border-indigo-300 transition';
+    div.onclick = () => loadLogForEdit(l.id);
+    div.innerHTML = `
+      <div class="flex items-center gap-2 flex-wrap">
+        <span class="text-xs text-gray-400">🎙 ${escHtml(time)}</span>
+        ${sev ? `<span class="text-xs font-medium px-2 py-0.5 rounded-full ${sevColor}">Severity ${sev}</span>` : ''}
+        ${triggers}
+      </div>
+      ${l.event ? `<p class="text-sm text-gray-700 leading-snug">${escHtml(l.event.slice(0,100))}${l.event.length>100?'…':''}</p>` : ''}
+      <p class="text-xs text-indigo-400">Tap to edit</p>`;
+  } else {
+    const f = entry.data;
+    const foods = (f.foods_identified || []).join(', ') || '—';
+    div.className = 'border border-gray-200 rounded-xl p-3 bg-white space-y-1 cursor-pointer hover:border-green-300 transition';
+    div.onclick = () => viewFoodLog(f);
+    div.innerHTML = `
+      <div class="flex items-center justify-between">
+        <span class="text-xs text-gray-400">📷 ${escHtml(time)}</span>
+        <span class="text-xs font-medium text-indigo-600">${escHtml(f.meal_type||'')}</span>
+      </div>
+      <p class="text-sm text-gray-700">${escHtml(foods)}</p>
+      ${f.estimated_calories != null ? `<p class="text-xs text-gray-500">~${f.estimated_calories} kcal</p>` : ''}
+      <p class="text-xs text-green-500">Tap to view analysis</p>`;
+  }
+  return div;
+}
+
+// ── viewFoodLog ───────────────────────────────────────────────────
+function viewFoodLog(f) {
+  // Show the saved photo
+  const img  = document.getElementById('log-photo-preview-img');
+  const wrap = document.getElementById('log-photo-preview-wrap');
+  img.src = COLLECT_API + '/food-log/' + f.id + '/photo';
+  wrap.classList.remove('hidden');
+  // Show nutrition analysis
+  _renderFoodResult(f);
+}
+
+// ── loadLogForEdit ────────────────────────────────────────────────
+async function loadLogForEdit(logId) {
+  try {
+    const res = await fetch(COLLECT_API + '/logs/' + logId);
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    const log = await res.json();
+
+    resetLogForm();
+    _logEditId      = logId;
+    _logCaptureMode = 'voice';
+
+    document.getElementById('log-notes').value    = log.event   || '';
+    document.getElementById('log-context').value  = log.context  || '';
+    document.getElementById('log-response').value = log.response || '';
+    document.getElementById('log-outcome').value  = log.outcome  || '';
+    if (log.severity != null) {
+      document.getElementById('log-severity').value = log.severity;
+      document.getElementById('log-severity-val').textContent = log.severity;
+    }
+    (log.triggers || []).forEach(t => selectedTriggers.add(t));
+    buildTagPills('log-trigger-tags', TRIGGER_OPTIONS, selectedTriggers);
+    (log.tags || []).forEach(t => selectedTags.add(t));
+    buildTagPills('log-tags', TAG_OPTIONS, selectedTags);
+
+    // Populate rating sliders from saved log values (always visible)
+    RATING_KEYS.forEach(k => {
+      if (log[k] == null) return;
+      const el = document.getElementById('ci-' + k);
+      if (el) el.value = log[k];
+      const v = document.getElementById('ci-' + k + '-val');
+      if (v) v.textContent = log[k];
+    });
+
+    // All entry fields are always visible — nothing to unhide
+    document.getElementById('log-submit-btn').textContent = 'Update Entry ✅';
+    document.getElementById('log-cancel-edit-btn').classList.remove('hidden');
+
+    document.querySelector('#panel-log .dl-card').scrollIntoView({ behavior: 'smooth', block: 'start' });
+    showToast('Log loaded — review and save.');
+  } catch (err) {
+    showToast('Could not load log: ' + err.message);
+  }
+}
+
+// ── loadLogsHistory / loadMoreLogs ────────────────────────────────
 let _logsHistoryOffset = 0;
 const LOGS_PAGE_SIZE = 20;
 
 async function loadLogsHistory() {
   _logsHistoryOffset = 0;
-  const list     = document.getElementById('logs-history-list');
-  const emptyEl  = document.getElementById('logs-history-empty');
-  const endEl    = document.getElementById('logs-history-end');
-  const loadBtn  = document.getElementById('logs-load-more');
+  const list    = document.getElementById('logs-history-list');
+  const emptyEl = document.getElementById('logs-history-empty');
+  const endEl   = document.getElementById('logs-history-end');
+  const loadBtn = document.getElementById('logs-load-more');
   if (list)    list.innerHTML = '<p class="text-xs text-gray-400">Loading…</p>';
   if (emptyEl) emptyEl.classList.add('hidden');
   if (endEl)   endEl.classList.add('hidden');
@@ -2312,26 +2272,35 @@ async function loadLogsHistory() {
 
   const today = localDateStr();
   try {
-    // days=3650 (~10 yrs) ensures all historical logs are reachable via pagination.
-    // Without this param the backend defaults to days=30 and older logs are invisible.
-    const resp = await fetch(
+    const evtResp = await fetch(
       COLLECT_API + '/logs?limit=' + LOGS_PAGE_SIZE + '&offset=0&include_voided=false&days=3650',
       { signal: createTimeoutSignal(30000) }
     );
-    if (!resp.ok) throw new Error('HTTP ' + resp.status);
-    const data = await resp.json();
-    const logs = (data.logs || []).filter(l => l.logged_at && localDateStr(l.logged_at) !== today);
+    if (!evtResp.ok) throw new Error('HTTP ' + evtResp.status);
+    const evtData = await evtResp.json();
+
+    // Stagger food-log fetch to avoid nginx burst=3 rate limit
+    await new Promise(r => setTimeout(r, 600));
+    const foodResp = await fetch(
+      COLLECT_API + '/food-log?days=3650&limit=200&child_id=' + encodeURIComponent(CHILD_ID),
+      { signal: createTimeoutSignal(30000) }
+    );
+    const foodData = foodResp.ok ? await foodResp.json() : { logs: [] };
+
+    const evtLogs  = (evtData.logs  || []).filter(l => l.logged_at && localDateStr(l.logged_at) !== today);
+    const foodLogs = (foodData.logs || []).filter(l => l.logged_at && localDateStr(l.logged_at) !== today);
+
+    const merged = [
+      ...evtLogs.map(l  => ({ type: 'event', data: l,  ts: l.logged_at })),
+      ...foodLogs.map(l => ({ type: 'food',  data: l,  ts: l.logged_at })),
+    ].sort((a, b) => new Date(b.ts) - new Date(a.ts));
+
     if (list) list.innerHTML = '';
-    if (logs.length === 0) {
-      if (emptyEl) emptyEl.classList.remove('hidden'); return;
-    }
-    logs.forEach(l => { if (list) list.appendChild(buildLogCard(l)); });
+    if (merged.length === 0) { if (emptyEl) emptyEl.classList.remove('hidden'); return; }
+    merged.forEach(e => { if (list) list.appendChild(e.type === 'food' ? buildFoodLogCard(e.data) : buildLogCard(e.data)); });
     _logsHistoryOffset = LOGS_PAGE_SIZE;
-    if (logs.length < LOGS_PAGE_SIZE) {
-      if (endEl) endEl.classList.remove('hidden');
-    } else {
-      if (loadBtn) loadBtn.classList.remove('hidden');
-    }
+    if (evtLogs.length < LOGS_PAGE_SIZE) { if (endEl) endEl.classList.remove('hidden'); }
+    else { if (loadBtn) loadBtn.classList.remove('hidden'); }
   } catch (err) {
     if (list) list.innerHTML = `<p class="text-xs text-red-600">Could not load past logs: ${escHtml(err.message)}</p>`;
   }
@@ -2367,9 +2336,29 @@ async function loadMoreLogs() {
   }
 }
 
+function buildFoodLogCard(f) {
+  const div = document.createElement('div');
+  div.className = 'border border-gray-200 rounded-xl p-3 bg-white space-y-1 cursor-pointer hover:border-green-300 transition';
+  div.onclick = () => viewFoodLog(f);
+  const dateStr = f.logged_at
+    ? new Date(f.logged_at).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })
+    : '';
+  const foods = (f.foods_identified || []).join(', ') || '—';
+  div.innerHTML = `
+    <div class="flex items-center justify-between">
+      <span class="text-xs text-gray-400">📷 ${escHtml(dateStr)}</span>
+      <span class="text-xs font-medium text-indigo-600">${escHtml(f.meal_type || '')}</span>
+    </div>
+    <p class="text-sm text-gray-700">${escHtml(foods)}</p>
+    ${f.estimated_calories != null ? `<p class="text-xs text-gray-500">~${f.estimated_calories} kcal</p>` : ''}
+    <p class="text-xs text-green-500">Tap to view analysis</p>`;
+  return div;
+}
+
 function buildLogCard(log) {
   const div = document.createElement('div');
-  div.className = 'border border-gray-200 rounded-xl p-3 bg-white space-y-1.5';
+  div.className = 'border border-gray-200 rounded-xl p-3 bg-white space-y-1.5 cursor-pointer hover:border-indigo-300 transition';
+  div.onclick = () => loadLogForEdit(log.id);
   const dateStr = log.logged_at
     ? new Date(log.logged_at).toLocaleString('en-US',{month:'short',day:'numeric',hour:'numeric',minute:'2-digit'})
     : '';
@@ -2378,20 +2367,14 @@ function buildLogCard(log) {
   const triggers = (log.triggers || []).map(t =>
     `<span class="inline-block px-1.5 py-0.5 bg-indigo-50 text-indigo-700 text-xs rounded-full border border-indigo-200">${escHtml(t)}</span>`
   ).join(' ');
-  const context = log.context
-    ? escHtml(log.context.length > 120 ? log.context.slice(0,120) + '…' : log.context)
-    : '';
-  const eventText = log.event
-    ? escHtml(log.event.length > 80 ? log.event.slice(0,80) + '…' : log.event)
-    : '';
   div.innerHTML = `
     <div class="flex items-center gap-2 flex-wrap">
       <span class="text-xs text-gray-400">${escHtml(dateStr)}</span>
       ${sev ? `<span class="text-xs font-medium px-2 py-0.5 rounded-full ${sevColor}">Severity ${sev}</span>` : ''}
       ${triggers}
     </div>
-    ${eventText ? `<p class="text-sm text-gray-700 font-medium leading-snug">${eventText}</p>` : ''}
-    ${context ? `<p class="text-xs text-gray-500 leading-relaxed">${context}</p>` : ''}`;
+    ${log.event ? `<p class="text-sm text-gray-700 font-medium leading-snug">${escHtml(log.event.slice(0,80))}${log.event.length>80?'…':''}</p>` : ''}
+    <p class="text-xs text-indigo-400">Tap to edit</p>`;
   return div;
 }
 
@@ -2806,21 +2789,6 @@ async function saveSettings() {
 // PAGE INIT
 // ════════════════════════════════════════════════════════════════
 document.addEventListener('DOMContentLoaded',function(){
-
-  // Build tag pills for Tab 2
-  buildTagPills('log-trigger-tags',TRIGGER_OPTIONS,selectedTriggers);
-  buildTagPills('log-tags',TAG_OPTIONS,selectedTags);
-
-  // ci-notes char counter (now lives in Tab 2 Daily Ratings card)
-  document.getElementById('ci-notes').addEventListener('input',function(){
-    document.getElementById('ci-notes-count').textContent=this.value.length;
-  });
-
-  // Date banner for Tab 2
-  const today=new Date();
-  const label=today.toLocaleDateString('en-US',{weekday:'long',month:'long',day:'numeric'});
-  const banner=document.getElementById('dl-date-banner');
-  if(banner) banner.textContent='Today — '+label;
 
   // Restore last active tab
   const saved=localStorage.getItem('active_tab');
@@ -3433,6 +3401,7 @@ function clearChatConversation() {
   const input = document.getElementById('chat-input');
   if (input) input.focus();
 }
+
 
 // ── Service Worker registration (P-UI-2) ──────────────────────────
 if ('serviceWorker' in navigator) {
