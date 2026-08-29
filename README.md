@@ -4,7 +4,100 @@
 
 ---
 
-## 最新更新 / Latest Changes (2026-04-19)
+## 最新更新 / Latest Changes (2026-04-20)
+
+本次更新新增了 **💬 Chat** 标签页（第 6 个标签），提供基于 SSE 流式传输的对话式问答，并将个人日志、临床数据库、实时网络三路检索结果并排展示。同时更新了 Nginx 配置，新增 `/api/chat/` 长连接反代路由。
+
+### Chat Tab — 对话式问答（新增标签页）
+
+**UI 面板（`#panel-chat`）**
+
+- 导航栏新增 💬 **Chat** 标签按钮（第 6 个标签）。
+- 整体采用「viewport-locked」布局：输入框始终固定在底部可见区域，消息列表独立滚动，不受页面高度影响。
+- 支持移动端自适应：小屏幕下证据面板堆叠在对话下方。
+
+**消息区域**
+
+- 用户消息（右对齐，`chat-bubble-user` 靛蓝气泡）和助手消息（左对齐，`chat-bubble-asst` 白色气泡）分别渲染。
+- 助手消息支持 **Markdown 渲染**（`chat-md` 样式：标题、列表、加粗、斜体、段落）。
+- 流式输出期间显示光标动画（`chat-cursor`，闪烁动效）。
+- 消息发送失败时显示错误提示 + **Retry** 按钮，点击后移除失败气泡并重新发送。
+
+**输入区域**
+
+- 自动高度调整的 `<textarea>`（`overflow-y:hidden` + 动态 `scrollHeight`）。
+- 发送中状态：按钮禁用 + 文案切换为「Sending…」，图标隐藏；完成后自动恢复焦点。
+- 「✕ New conversation」按钮：清空对话历史、重置状态栏、重置检索点、重置证据面板占位文本。
+- 支持 `Enter` 键发送（`Shift+Enter` 换行）。
+
+**状态栏（`#chat-status-bar`）**
+
+- 骨架动画（`#chat-status-skeleton`）在每次新请求时先显示，后端返回 `metadata` 事件后替换为真实数据。
+- 显示三组信息：
+  - **Topic**（`intent`）：`BEHAVIOR_PATTERN` / `INTERVENTION` / `MEDICAL` / `SAFETY` 等，映射为友好标签。
+  - **Approach**（`mode`）：`HYBRID_LOG_FIRST` / `HYBRID_EVIDENCE_FIRST` / `EXPLAIN_PATTERN` / `SAFETY_EXPANDED_MODE` 等完整描述文字。
+  - **Top 3 triggers**：以 `chat-chip` 圆角标签形式展示。
+
+**搜索注释（user bubble 下方）**
+
+- 收到 `metadata` 事件后，在用户气泡下方自动插入检索注释行（`chat-search-annotation`）：
+  - 主查询（`rewritten_query`）以靛蓝色 chip 显示。
+  - 子查询（`sub_queries[]`）以灰色 chip 追加。
+  - 实时网络搜索的查询词（`live` 检索触发后）以深靛蓝 chip 追加（`🌐 <query>`）。
+
+**右侧证据面板（`#chat-evidence`，268px 固定宽度）**
+
+三路检索结果分三个可折叠卡片展示，各含状态指示点（灰色闲置 → 琥珀色搜索中 → 绿色完成）：
+
+| 卡片 | 数据来源 | SSE 事件 |
+|---|---|---|
+| 📋 Personal Logs | 用户个人日志历史 | `evidence_logs` |
+| 📘 Clinical Evidence | 爬取数据库 | `evidence_crawl` |
+| 🌐 Live Sources | 实时网络搜索 | `evidence_live` |
+
+- 日志卡片支持点击展开/折叠完整文本（日期、触发类型 chip、严重程度色标 S1–S5）。
+- 临床与实时来源渲染标题 + 可点击域名链接（`_refRow`）。
+- 实时来源卡片显示「(N sites searched)」徽章。
+
+**SSE 流式协议**
+
+| 事件类型 | 处理函数 |
+|---|---|
+| `metadata` | 更新状态栏、注入搜索注释 |
+| `retrieval` | 更新三路检索点颜色 |
+| `evidence_logs` | 渲染 Personal Logs 面板 |
+| `evidence_crawl` | 渲染 Clinical Evidence 面板 |
+| `evidence_live` | 渲染 Live Sources 面板 |
+| `token` | 流式追加助手文字到气泡 |
+| `done` | 完成渲染（Markdown 解析、状态重置） |
+| `error` | 显示错误气泡 + Retry 按钮 |
+
+### Nginx — `/api/chat/` 路由（`config/nginx/ui.conf`）
+
+- 新增 `location /api/chat/` 块，**优先于** `/api/` 匹配，代理至 `collect_backend`（端口 18001）。
+- 关键 SSE 配置：`proxy_buffering off`、`proxy_cache off`、`chunked_transfer_encoding on`、`proxy_read_timeout 3600s`。
+- 限流：`perip_collect` zone，burst=3，nodelay。
+
+### 移除
+
+- Log Today 标签页中的「🎙 Audio Quick Log」快速录音入口卡片已移除（确认表单 `#audio-confirm-section` 保留，供程序化调用）。
+
+### 变更文件
+
+| 文件 | 变更 |
+|---|---|
+| `index.html` | +851 行：新增 Chat 标签页完整 UI、CSS、JS；移除 Audio Quick Log 入口卡片 |
+| `config/nginx/ui.conf` | +22 行：新增 `/api/chat/` SSE 反代路由 |
+
+### 依赖的后端变更
+
+| 后端 API | 说明 | 状态 |
+|---|---|---|
+| `POST /api/chat/stream` (SSE) | Chat 对话流式响应（`metadata` / `retrieval` / `evidence_*` / `token` / `done` / `error` 事件） | 需部署 |
+
+---
+
+## 此前更新 / Previous Changes (2026-04-19)
 
 本次更新新增了 Settings 标签页、Service Worker 离线缓存、音频快速日志确认流程、改进的错误处理、历史日志翻页等 5 项功能（P-UI-1 ～ P-UI-4, P-UI-7），并包含多项 Bug 修复。
 
@@ -276,7 +369,7 @@ UI 层本身不含任何搜索逻辑，所有搜索与 AI 摘要均由 `autism-s
 ```
 ┌─────────────────────────────────────────┐
 │  🧩 Autism Support   ● N indexed ℹ️Src │  ← 导航栏 + Sources 弹窗入口
-│  [Search] [Log Today] [Insights] [Clin] │  ← 标签页
+│  [Search][Log Today][Insights][Clin][💬]│  ← 标签页（第 6 个：Chat）
 ├─────────────────────────────────────────┤
 │  搜索框 + [Search] 按钮                  │  ← 问题输入
 │  ▸ Filters（来源/时间/数量/受众）        │  ← 折叠过滤器（含 Audience 切换）
